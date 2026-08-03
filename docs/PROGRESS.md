@@ -20,10 +20,17 @@ are ticked through Task 11) and `docs/superpowers/specs/2026-08-03-sangu-design.
 | 9. Settings page | ✅ done, verified in browser |
 | 10. Current-month page | ✅ done, verified in browser |
 | 11. Dashboard | ✅ done, verified in browser |
-| 12. Target (savings goals) page | ⬜ **next** |
+| 12. Target (savings goals) page | ✅ code done, ⬜ **browser check pending** |
 
-Checks at the last commit: `npm run build` passes, `npm run lint` reports no
-issues, `npm test` is 40 passing across 4 files.
+All plan tasks are implemented. Checks at the last commit: `npm run build`
+passes, `npm run lint` reports no issues, `npm test` is 43 passing across 5
+files.
+
+**Outstanding:** Task 12 step 6 — the only thing left in the plan. Log in, make
+sure there is a savings goal with a target amount, generate the current month,
+mark its saving item paid in `/current`, then confirm `/goals` shows the
+accumulated total, the remaining amount, an estimated completion month, and the
+setoran line switched to "Sudah menabung". Nothing else is known to be missing.
 
 ## Picking this up on another machine
 
@@ -89,7 +96,17 @@ Each was a deliberate call; the plan text was not rewritten to match.
 8. **Generated items cannot be deleted** in the current-month page — only manual
    ones. Deleting a generated row is pointless because syncing recreates it; zero
    it out for one month, or deactivate the definition.
-9. **Manually added items are always `expense`.** Other categories come from
+9. **`lib/goals.ts` reuses `shiftMonth`/`toIsoMonth`** instead of the private
+   `addMonths` the plan spelled out. Same arithmetic, already tested, one copy.
+10. **The goals page has no month picker.** Accumulation is cross-period, so a
+   picker would move only the checklist while every total stayed put. The page
+   pins itself to `currentMonthParam()` and says which month the checklist is
+   for.
+11. **The "sudah menabung" checklist is an icon, not a checkbox.** The plan said
+   read-only checkbox; a disabled checkbox reads as a broken control. It is a
+   status line with three states — paid, unpaid, and no saving item generated
+   for this month at all.
+12. **Manually added items are always `expense`.** Other categories come from
    definitions; a hand-made row would lack `source_id` and the generator would
    duplicate it the following month.
 
