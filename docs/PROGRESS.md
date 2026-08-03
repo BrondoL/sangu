@@ -194,10 +194,19 @@ Supabase dashboard → Project Settings → API for project **`sangu`**
 - `NEXT_PUBLIC_SUPABASE_URL` — `https://swuqbwyauxepoeaxrtlk.supabase.co`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — the legacy anon key
 
-The single auth user already exists and signup is disabled in that project. The
-`settings` row is seeded (base salary was set to 15.000.000 through the UI).
-There is real test data: 4 accounts, 1 recurring expense, 1 installment, 1
-savings goal, and periods for 2026-08 and 2026-09.
+The single auth user already exists and signup is disabled in that project.
+
+**The database is empty as of 2026-08-04.** Every application table was cleared
+to start the pilot against real numbers from the Excel sheet; only `auth.users`
+was left alone. The test data that used to be there — 4 accounts, 1 recurring
+expense, 1 instalment, 1 savings goal, base salary 15jt, and periods for 2026-08
+and 2026-09 — is kept as runnable inserts in
+`backups/2026-08-04-pre-wipe.sql`, in foreign-key order. Paste it into the
+Supabase SQL editor to get that state back.
+
+An empty `settings` table is safe: `getSettings` falls back to `base_salary: 0`
+when the row is absent, and `setBaseSalary` upserts with an explicit `user_id`,
+so the row reappears the first time a base salary is saved.
 
 ### If the UI renders but nothing is clickable
 
