@@ -227,6 +227,28 @@ BRI tidak menerima transfer karena saldonya sudah melebihi kebutuhan, dan kelebi
 
 **Cek kecukupan** ditampilkan dua baris: terhadap gaji base dan terhadap gaji aktual. Selisihnya langsung terlihat saat ada bonus atau potongan.
 
+> **Amendemen 2026-08-04 — "sisa gaji" diganti "uang bebas".**
+> ```
+> kekurangan_bersih = total_kekurangan - kelebihan_penerima
+> uang_bebas        = gaji_aktual - kekurangan_bersih
+> ```
+> Setelah kelebihan penerima gaji ikut disapu (lihat amandemen di langkah 6),
+> "sisa gaji" jadi kekecilan: transfernya membawa kelebihan itu, tapi angka
+> sisanya tidak menghitungnya. Uang bebas adalah angka yang benar, dan
+> definisinya bisa diperiksa dari dua arah — sama dengan gaji dikurangi
+> kekurangan bersih, dan juga sama dengan yang masih dipegang proxy setelah ia
+> menalangi semua rekening yang kurang. Keduanya diuji di `calculations.test.ts`.
+>
+> Namanya bukan lagi "sisa gaji" karena sebagiannya memang bukan berasal dari
+> gaji bulan itu.
+>
+> **Total pengeluaran tetap kotor.** Sempat dipertimbangkan menggantinya dengan
+> angka bersih (kebutuhan dikurangi saldo), mengikuti Excel yang digantikan
+> aplikasi ini. Ditolak: angka bersih itu kekurangan, bukan pengeluaran, dan
+> mengganti yang kotor menghilangkan jawaban atas pertanyaan pertama di spec ini
+> — "berapa total pengeluaran bulan ini" — sekaligus dasar pie chart per
+> kategori. Angka bersih muncul sebagai keterangan di bawah uang bebas.
+
 **Sisa belum dibayar** — jumlah `amount` item dengan `is_paid = false`. Jadi pegangan saat pembayaran dilakukan bertahap setelah gajian.
 
 **Rincian per kategori** — total tiap kategori, untuk pie chart.

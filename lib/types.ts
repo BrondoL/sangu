@@ -50,9 +50,10 @@ export interface MonthlySummary {
   totalExpense: number
   perAccount: AccountNeed[]
   totalShortfall: number
-  sufficiencyVsBase: number          // baseSalary - totalShortfall
-  sufficiencyVsActual: number | null // actualSalary - totalShortfall (null if no actualSalary)
   receiverSurplus: number            // what the salary receiver holds beyond its own need
+  netShortfall: number               // totalShortfall - receiverSurplus: what the salary must cover
+  freeMoneyVsBase: number            // baseSalary - netShortfall
+  freeMoney: number | null           // actualSalary - netShortfall (null if no actualSalary)
   transferToProxy: number | null     // null if no actualSalary, proxy, or receiver
   unpaidTotal: number
   perCategory: CategoryTotal[]

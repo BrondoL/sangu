@@ -45,9 +45,15 @@ describe('calculateMonthlySummary — normal month (spec example)', () => {
   it('sums total shortfall', () => {
     expect(s.totalShortfall).toBe(8_500_000)
   })
-  it('computes sufficiency vs base and actual', () => {
-    expect(s.sufficiencyVsBase).toBe(11_500_000)
-    expect(s.sufficiencyVsActual).toBe(13_500_000)
+  it('computes free money vs base and actual', () => {
+    // No receiver surplus here, so the net shortfall is the whole shortfall.
+    expect(s.netShortfall).toBe(8_500_000)
+    expect(s.freeMoneyVsBase).toBe(11_500_000)
+    expect(s.freeMoney).toBe(13_500_000)
+  })
+  it('free money is what the proxy still holds after it pays everyone', () => {
+    // 20.5M in, less Jago's own 3M and Mandiri's 4M.
+    expect(s.transferToProxy! - 7_000_000).toBe(s.freeMoney)
   })
   it('computes transfer to proxy = non-receiver shortfalls + free money', () => {
     expect(s.transferToProxy).toBe(20_500_000) // (3M+4M+0) + 13.5M
@@ -85,12 +91,20 @@ describe('calculateMonthlySummary — receiver already holds more than it needs'
   it('leaves the receiver holding exactly its own need', () => {
     expect(5_000_000 + 22_000_000 - s.transferToProxy!).toBe(2_000_000)
   })
+  it('nets the surplus off the shortfall the salary has to cover', () => {
+    expect(s.netShortfall).toBe(4_000_000) // 7M of shortfalls less 3M spare
+    expect(s.freeMoney).toBe(18_000_000) // 22M salary less 4M
+  })
+  it('free money still equals what the proxy is left holding', () => {
+    // 25M in, less Jago's own 3M and Mandiri's 4M.
+    expect(s.transferToProxy! - 7_000_000).toBe(s.freeMoney)
+  })
 })
 
 describe('calculateMonthlySummary — deficit month', () => {
-  it('reports negative sufficiency', () => {
+  it('reports negative free money', () => {
     const s = calculateMonthlySummary({ ...base, actualSalary: 5_000_000 })
-    expect(s.sufficiencyVsActual).toBe(-3_500_000)
+    expect(s.freeMoney).toBe(-3_500_000)
   })
 })
 
@@ -105,11 +119,11 @@ describe('calculateMonthlySummary — edge cases', () => {
     expect(s.totalExpense).toBe(0)
     expect(s.transferToProxy).toBe(22_000_000) // free money only = full actual salary
   })
-  it('null actualSalary hides actual sufficiency and transfer', () => {
+  it('null actualSalary hides free money and the transfer', () => {
     const s = calculateMonthlySummary({ ...base, actualSalary: null })
-    expect(s.sufficiencyVsActual).toBeNull()
+    expect(s.freeMoney).toBeNull()
     expect(s.transferToProxy).toBeNull()
-    expect(s.sufficiencyVsBase).toBe(11_500_000)
+    expect(s.freeMoneyVsBase).toBe(11_500_000)
   })
   it('warns when no proxy account', () => {
     const noProxy = accounts.map((a) => ({ ...a, isProxy: false }))

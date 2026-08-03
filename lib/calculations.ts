@@ -44,8 +44,9 @@ export function calculateMonthlySummary(input: MonthlyCalcInput): MonthlySummary
   if (!proxy) warnings.push('no_proxy')
   if (!receiver) warnings.push('no_salary_receiver')
 
-  const sufficiencyVsBase = baseSalary - totalShortfall
-  const sufficiencyVsActual =
+  // Against the raw shortfall — used only to size the salary's own leftover
+  // before the receiver's spare cash is added on top of the transfer.
+  const salaryLeftover =
     actualSalary === null ? null : actualSalary - totalShortfall
 
   const nonReceiverShortfall = perAccount
@@ -55,8 +56,8 @@ export function calculateMonthlySummary(input: MonthlyCalcInput): MonthlySummary
     })
     .reduce((s, a) => s + a.shortfall, 0)
 
-  const freeMoney =
-    sufficiencyVsActual === null ? null : Math.max(0, sufficiencyVsActual)
+  const salaryFree =
+    salaryLeftover === null ? null : Math.max(0, salaryLeftover)
 
   /**
    * What the salary receiver is already holding beyond its own expenses.
@@ -78,17 +79,30 @@ export function calculateMonthlySummary(input: MonthlyCalcInput): MonthlySummary
   // Needs both flags: without a proxy there is nowhere to send the money, and
   // without a receiver "non-receiver shortfall" would just be every shortfall.
   const transferToProxy =
-    !proxy || !receiver || freeMoney === null
+    !proxy || !receiver || salaryFree === null
       ? null
-      : nonReceiverShortfall + freeMoney + receiverSurplus
+      : nonReceiverShortfall + salaryFree + receiverSurplus
+
+  /**
+   * What the month actually costs once the money already sitting in the
+   * receiver is counted, and what is left over after covering it.
+   *
+   * `freeMoney` is the figure to act on: it is exactly what the proxy is still
+   * holding once it has topped up every account that was short, so it is the
+   * amount available to move into savings.
+   */
+  const netShortfall = totalShortfall - receiverSurplus
+  const freeMoneyVsBase = baseSalary - netShortfall
+  const freeMoney = actualSalary === null ? null : actualSalary - netShortfall
 
   return {
     totalExpense,
     perAccount,
     totalShortfall,
-    sufficiencyVsBase,
-    sufficiencyVsActual,
     receiverSurplus,
+    netShortfall,
+    freeMoneyVsBase,
+    freeMoney,
     transferToProxy,
     unpaidTotal,
     perCategory,
