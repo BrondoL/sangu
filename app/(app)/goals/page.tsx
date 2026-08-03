@@ -75,7 +75,6 @@ export default async function GoalsPage() {
                 goal={goal}
                 accountName={accountName(goal.account_id)}
                 accumulated={accumulated}
-                month={month}
                 savedThisMonth={savingBySource.get(goal.id) ?? null}
                 projection={projectGoal({
                   targetAmount: goal.target_amount,

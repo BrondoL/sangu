@@ -25,14 +25,12 @@ export function GoalCard({
   accountName,
   accumulated,
   projection,
-  month,
   savedThisMonth,
 }: {
   goal: Goal
   accountName: string
   accumulated: number
   projection: GoalProjection
-  month: string
   /**
    * This month's saving item for the goal: `null` when the month has not been
    * generated, or the goal was added after it was.
@@ -44,21 +42,23 @@ export function GoalCard({
   const percent = progressRatio === null ? null : Math.round(progressRatio * 100)
 
   const status = savedThisMonth === null ? 'none' : savedThisMonth.isPaid ? 'paid' : 'due'
+  // No month in the label: the page header already names the month these cards
+  // are about, and repeating it wrapped the line on every phone-width card.
   const STATUS = {
     paid: {
       Icon: CircleCheck,
       className: 'text-surplus',
-      text: `Sudah menabung ${formatMonthLabel(month)}`,
+      text: 'Sudah menabung',
     },
     due: {
       Icon: Circle,
       className: 'text-muted-foreground',
-      text: `Belum menabung ${formatMonthLabel(month)}`,
+      text: 'Belum menabung',
     },
     none: {
       Icon: CircleDashed,
       className: 'text-muted-foreground',
-      text: `Belum ada setoran ${formatMonthLabel(month)}`,
+      text: 'Belum ada setoran',
     },
   }[status]
 
@@ -89,11 +89,14 @@ export function GoalCard({
         </div>
 
         {percent !== null && target !== null && (
-          <div className="mt-4 space-y-1.5">
-            <div className="flex items-baseline justify-between">
+          <div className="mt-4 space-y-2">
+            {/* The target sits under the bar as a caption rather than beside the
+                total: "20% dari 1.500.000.000" next to a nine-digit figure has
+                nowhere to go in a half-width card and collides with it. */}
+            <div className="flex items-baseline justify-between gap-3">
               <Amount value={accumulated} size="lg" />
-              <span className="amount text-muted-foreground text-xs">
-                {percent}% dari {target.toLocaleString('id-ID')}
+              <span className="amount text-muted-foreground shrink-0 text-sm">
+                {percent}%
               </span>
             </div>
             <div
@@ -109,6 +112,9 @@ export function GoalCard({
                 style={{ width: `${percent}%` }}
               />
             </div>
+            <p className="text-muted-foreground text-xs">
+              dari {formatRupiah(target)}
+            </p>
           </div>
         )}
 

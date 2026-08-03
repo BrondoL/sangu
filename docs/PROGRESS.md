@@ -64,13 +64,34 @@ Conventions worth keeping: uppercase eyebrows are for labels and column heads
 only, never for content — an account name or an amount inside a sentence stays
 in sentence case. Money inputs are a ruled line, not a boxed field.
 
-**What was reviewed on screen:** dark mode across the dashboard, target cards and
-the Bulan Ini list; light mode on the dashboard. Headless Chromium began
-auto-darkening partway through, so light mode was not re-shot after the last
-round of changes — its contrast is validated numerically, not visually. Recharts
-does not render under headless screenshotting, so the pie and line charts were
-not seen; their structure is unchanged from the version verified in a browser
-earlier, only the header treatment differs.
+### Responsive pass, 2026-08-04
+
+Reviewed at 375, 768 and 1440 in both modes. Three real defects, all fixed:
+
+1. **The pie legend overflowed its card and was clipped** — amounts and the
+   whole percentage column were cut off from `sm` up. Cause: `w-full` on the
+   legend `ul` beside a `shrink-0` donut in a flex row resolves to the full row
+   width. It is `min-w-0 flex-1` now.
+2. **Donut beside legend only works in a wide card.** With the fix above the
+   names truncated to a single initial instead, because in the two-column grid
+   each card is ~330px. The row now starts at `lg`, stacked below that.
+3. **The goal card collided with itself** — "20% dari 1.500.000.000" ran into a
+   nine-digit total. The target moved under the bar as a caption, and the month
+   came out of the "Sudah menabung" line since the page header already names it.
+
+Desktop also stopped being a stretched phone: the container widens to
+`max-w-5xl` at `lg` and the four destinations move into the header, with the
+bottom tab bar hidden there.
+
+**Verifying layout in this environment:** headless Chromium clamps its window to
+~485 CSS px, so `--window-size=375` renders a 500px-wide layout and merely crops
+the image — which looks exactly like a horizontal overflow bug and is not one.
+To check phone widths, constrain the content column with a temporary
+`max-width` and compare `scrollWidth` against `clientWidth` per element instead
+of trusting the screenshot. Done that way, nothing overflows at a 375px column.
+Also note `--screenshot` alone does not wait for hydration, so Recharts renders
+blank; `--virtual-time-budget=9000 --run-all-compositor-stages-before-draw`
+fixes it, and `--dump-dom` is the reliable way to read computed sizes.
 
 ## Spec audit, 2026-08-03
 

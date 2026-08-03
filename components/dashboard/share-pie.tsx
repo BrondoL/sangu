@@ -36,7 +36,10 @@ export function SharePie({ title, data }: { title: string; data: Share[] }) {
     <Card>
       <CardContent>
         <SectionHead title={title} />
-        <div className="flex flex-col items-center gap-5 sm:flex-row">
+        {/* Side by side only once the card is genuinely wide. In the two-column
+            grid below lg each card is ~330px, and a donut beside a three-column
+            legend there squeezes the names down to an initial. */}
+        <div className="flex flex-col items-center gap-5 lg:flex-row">
           <div className="size-36 shrink-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -69,8 +72,11 @@ export function SharePie({ title, data }: { title: string; data: Share[] }) {
             </ResponsiveContainer>
           </div>
 
-          {/* The legend doubles as the direct labels: identity is never colour-alone. */}
-          <ul className="w-full space-y-2 text-sm">
+          {/* The legend doubles as the direct labels: identity is never colour-alone.
+              min-w-0 + flex-1, never w-full: beside a shrink-0 donut in a flex
+              row, w-full resolves to the whole row and pushes the figures out
+              past the card's clipped edge. */}
+          <ul className="min-w-0 flex-1 space-y-2 text-sm">
             {slices.map((slice, index) => (
               <li key={slice.name} className="flex items-center gap-2.5">
                 <span
