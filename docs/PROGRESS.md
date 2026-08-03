@@ -94,6 +94,11 @@ owner of the app unable to tell what the numbers meant, which is the only test
 that matters. It also restores the base-salary comparison the spec asks for,
 which had been dropped when those hints replaced it.
 
+It is a native `<details>`, closed by default: the derivation answers a question
+you ask once, and after that it is in the way. Native rather than a Radix
+collapsible so the component stays a server component and ships no JavaScript,
+with keyboard support and the disclosure semantics already correct.
+
 ### Robustness + PWA catch-up, 2026-08-04
 
 Four loose ends closed after the redesign audit:

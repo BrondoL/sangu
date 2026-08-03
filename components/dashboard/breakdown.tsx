@@ -1,5 +1,6 @@
+import { ChevronDown } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Eyebrow, SectionHead } from '@/components/kwitansi'
+import { Eyebrow } from '@/components/kwitansi'
 import { formatRupiah } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { MonthlySummary } from '@/lib/types'
@@ -69,51 +70,82 @@ export function Breakdown({
   return (
     <Card>
       <CardContent>
-        <SectionHead title="Dari kebutuhan ke uang bebas" aside="dalam rupiah" />
+        {/*
+          Native <details>, so this stays a server component with no JavaScript
+          shipped and keyboard support for free. Closed by default: it answers
+          "where did these numbers come from", which is a question you ask once.
+        */}
+        <details className="group">
+          <summary className="focus-visible:ring-ring/50 flex cursor-pointer list-none items-center justify-between gap-3 rounded-sm outline-none focus-visible:ring-3 [&::-webkit-details-marker]:hidden">
+            <Eyebrow>Dari kebutuhan ke uang bebas</Eyebrow>
+            <span className="text-muted-foreground group-hover:text-foreground flex items-center gap-1.5 text-xs transition-colors">
+              Rincian
+              <ChevronDown
+                className="size-3.5 transition-transform group-open:rotate-180"
+                aria-hidden
+              />
+            </span>
+          </summary>
 
-        <Line label="Total kebutuhan" value={summary.totalExpense} />
-        {showCovered && (
-          <Line op="−" label="Sudah ada di rekeningnya" value={coveredByBalances} />
-        )}
-        {showCovered && (
-          <Line op="=" label="Kekurangan" value={summary.totalShortfall} rule />
-        )}
-        {showSurplus && (
-          <Line
-            op="−"
-            label={`Kelebihan di ${receiverName ?? 'rekening penerima gaji'}`}
-            value={summary.receiverSurplus}
-          />
-        )}
-        {showSurplus && (
-          <Line op="=" label="Harus ditutup gaji" value={summary.netShortfall} rule />
-        )}
+          <div className="border-rule mt-3 border-t pt-3">
+            <p className="text-muted-foreground mb-1 text-right text-xs">
+              dalam rupiah
+            </p>
 
-        <div className="mt-4">
-          <Line
-            label={actualSalary === null ? 'Gaji base' : 'Gaji aktual'}
-            value={salary}
-          />
-          <Line op="−" label="Harus ditutup gaji" value={summary.netShortfall} />
-          <Line
-            op="="
-            label={short ? 'Kurang' : 'Uang bebas'}
-            value={Math.abs(free)}
-            total
-          />
-        </div>
+            <Line label="Total kebutuhan" value={summary.totalExpense} />
+            {showCovered && (
+              <Line
+                op="−"
+                label="Sudah ada di rekeningnya"
+                value={coveredByBalances}
+              />
+            )}
+            {showCovered && (
+              <Line op="=" label="Kekurangan" value={summary.totalShortfall} rule />
+            )}
+            {showSurplus && (
+              <Line
+                op="−"
+                label={`Kelebihan di ${receiverName ?? 'rekening penerima gaji'}`}
+                value={summary.receiverSurplus}
+              />
+            )}
+            {showSurplus && (
+              <Line
+                op="="
+                label="Harus ditutup gaji"
+                value={summary.netShortfall}
+                rule
+              />
+            )}
 
-        {/* The spec asks for the base comparison to stay visible so a bonus or a
-            deduction shows up as a number rather than a feeling. */}
-        {vsBase && (
-          <p className="text-muted-foreground border-rule mt-3 border-t pt-3 text-xs text-pretty">
-            <Eyebrow>Vs gaji base</Eyebrow>{' '}
-            {formatRupiah(baseSalary)} — gaji bulan ini{' '}
-            {formatRupiah(Math.abs(bonus))} {bonus > 0 ? 'lebih besar' : 'lebih kecil'}.
-            Dengan gaji base, {summary.freeMoneyVsBase < 0 ? 'kurang' : 'uang bebas'}{' '}
-            {formatRupiah(Math.abs(summary.freeMoneyVsBase))}.
-          </p>
-        )}
+            <div className="mt-4">
+              <Line
+                label={actualSalary === null ? 'Gaji base' : 'Gaji aktual'}
+                value={salary}
+              />
+              <Line op="−" label="Harus ditutup gaji" value={summary.netShortfall} />
+              <Line
+                op="="
+                label={short ? 'Kurang' : 'Uang bebas'}
+                value={Math.abs(free)}
+                total
+              />
+            </div>
+
+            {/* The spec asks for the base comparison to stay visible so a bonus
+                or a deduction shows up as a number rather than a feeling. */}
+            {vsBase && (
+              <p className="text-muted-foreground border-rule mt-3 border-t pt-3 text-xs text-pretty">
+                <Eyebrow>Vs gaji base</Eyebrow> {formatRupiah(baseSalary)} — gaji
+                bulan ini {formatRupiah(Math.abs(bonus))}{' '}
+                {bonus > 0 ? 'lebih besar' : 'lebih kecil'}. Dengan gaji base,{' '}
+                {summary.freeMoneyVsBase < 0 ? 'kurang' : 'uang bebas'}{' '}
+                {formatRupiah(Math.abs(summary.freeMoneyVsBase))}.
+              </p>
+            )}
+          </div>
+        </details>
       </CardContent>
     </Card>
   )
