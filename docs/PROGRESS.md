@@ -74,7 +74,13 @@ Four loose ends closed after the redesign audit:
    mark is now the wordmark's kunyit-on-nila "S" in IBM Plex Mono, rendered
    through headless Chromium so it uses the real brand font, and sized inside
    the maskable safe zone. `any` and `maskable` are declared as separate icon
-   entries rather than one combined `"any maskable"`.
+   entries rather than one combined `"any maskable"`. `app/favicon.ico` and
+   `app/apple-icon.png` were replaced too — Next picks both up by filename. The
+   favicon is drawn from its own tighter, heavier render rather than a downscale
+   of the app icon: the maskable padding wastes half the frame at 16px and the
+   600-weight glyph goes to mush. It ships 16/32/48 only, because including a
+   256 frame pushes the `.ico` past 250 KB and the manifest already covers the
+   large sizes.
 2. **`app/(app)/error.tsx` + `app/error.tsx` + `app/not-found.tsx`.** Every
    query in `lib/queries/` rethrows the Supabase error, so before this a lapsed
    session produced Next's bare production error page. The app-level boundary
