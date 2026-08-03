@@ -178,11 +178,9 @@ Nilai negatif berarti bulan itu tekor, dan besarannya langsung terlihat.
 **6. Transfer ke proxy**
 ```
 kelebihan_penerima = max(0, saldo_penerima_gaji - kebutuhan_penerima_gaji)
-transfer = jumlah_kekurangan_rekening_non_penerima_gaji
-         + max(0, sisa_gaji)
-         + kelebihan_penerima
+transfer = max(0, gaji_aktual - kekurangan_penerima_gaji + kelebihan_penerima)
 ```
-Sisa gaji ikut dikirim ke proxy sebagai uang bebas, siap diteruskan ke rekening tabungan.
+Yaitu: semua yang bisa dilepas rekening penerima gaji setelah menahan bagiannya sendiri. Sisa gaji ikut dikirim ke proxy sebagai uang bebas, siap diteruskan ke rekening tabungan.
 
 > **Amendemen 2026-08-04 — kelebihan di rekening penerima gaji ikut disapu.**
 > Contoh perhitungan di bawah memakai penerima gaji yang saldonya *kurang* dari
@@ -203,6 +201,17 @@ Sisa gaji ikut dikirim ke proxy sebagai uang bebas, siap diteruskan ke rekening 
 > melampaui gaji, karena sebagiannya bukan berasal dari gaji bulan itu; kartu di
 > Dashboard menyebutkan bagian tersebut secara terpisah supaya tidak
 > membingungkan.
+>
+> **Rumusnya dinyatakan dari sisi pengirim, bukan sisi penerima.** Bentuk lama
+> — kekurangan non-penerima + sisa gaji + kelebihan penerima — memberi hasil
+> yang sama persis selama gaji menutup semuanya, tapi rusak saat bulan tekor:
+> ia meminta uang yang tidak ada, dan menghitung kelebihan penerima dua kali
+> (kelebihan itu *menutupi* kekurangan, bukan tambahan di atasnya). Contoh:
+> BCA butuh 1jt saldo 5jt, JAGO butuh 10jt saldo 0, gaji 3jt — bentuk lama
+> menyuruh mentransfer 14jt padahal BCA hanya bisa melepas 7jt. Menyatakannya
+> sebagai "apa yang bisa dilepas penerima gaji" membuat angkanya selalu berupa
+> perintah yang bisa dijalankan. Selisihnya muncul sebagai kekurangan, bukan
+> sebagai transfer yang mustahil.
 
 ### Contoh Perhitungan
 

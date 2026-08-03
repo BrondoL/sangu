@@ -36,6 +36,7 @@ export function SummaryCards({
   actualSalary: number | null
 }) {
   const freeMoney = summary.freeMoney ?? summary.freeMoneyVsBase
+  const short = freeMoney < 0
   // The gap between what the month costs and what the salary has to find is
   // money that was already sitting where it was needed.
   const coveredByBalances = summary.totalExpense - summary.totalShortfall
@@ -129,12 +130,20 @@ export function SummaryCards({
           />
           {/* Not "sisa gaji": part of this was already in the receiver, not out
               of this month's pay. It is what the proxy still holds once every
-              short account has been topped up. */}
+              short account has been topped up — and when there is not enough to
+              go round it is a hole, not free money, so it changes its name and
+              drops the minus sign rather than reading "Uang bebas −3.500.000". */}
           <Stat
-            label={summary.freeMoney === null ? 'Uang bebas vs gaji base' : 'Uang bebas'}
-            value={freeMoney}
-            tone={freeMoney < 0 ? 'deficit' : 'surplus'}
-            hint={`Setelah menutup kekurangan ${formatRupiah(summary.netShortfall)}`}
+            label={`${short ? 'Kurang' : 'Uang bebas'}${
+              summary.freeMoney === null ? ' vs gaji base' : ''
+            }`}
+            value={Math.abs(freeMoney)}
+            tone={short ? 'deficit' : 'surplus'}
+            hint={
+              short
+                ? `Gaji tidak menutup kekurangan ${formatRupiah(summary.netShortfall)}`
+                : `Setelah menutup kekurangan ${formatRupiah(summary.netShortfall)}`
+            }
           />
         </div>
       </Card>

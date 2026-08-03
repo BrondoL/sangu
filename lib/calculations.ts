@@ -44,20 +44,9 @@ export function calculateMonthlySummary(input: MonthlyCalcInput): MonthlySummary
   if (!proxy) warnings.push('no_proxy')
   if (!receiver) warnings.push('no_salary_receiver')
 
-  // Against the raw shortfall — used only to size the salary's own leftover
-  // before the receiver's spare cash is added on top of the transfer.
-  const salaryLeftover =
-    actualSalary === null ? null : actualSalary - totalShortfall
-
-  const nonReceiverShortfall = perAccount
-    .filter((a) => {
-      const acc = accounts.find((x) => x.id === a.accountId)!
-      return !acc.isSalaryReceiver
-    })
-    .reduce((s, a) => s + a.shortfall, 0)
-
-  const salaryFree =
-    salaryLeftover === null ? null : Math.max(0, salaryLeftover)
+  const receiverRow = receiver
+    ? perAccount.find((a) => a.accountId === receiver.id)
+    : undefined
 
   /**
    * What the salary receiver is already holding beyond its own expenses.
@@ -69,19 +58,30 @@ export function calculateMonthlySummary(input: MonthlyCalcInput): MonthlySummary
    * what separates it from any other account in surplus, whose balance stays
    * put precisely because moving it would be an unplanned transfer.
    */
-  const receiverNeed = receiver
-    ? (perAccount.find((a) => a.accountId === receiver.id)?.need ?? 0)
-    : 0
   const receiverSurplus = receiver
-    ? Math.max(0, balanceOf(receiver.id) - receiverNeed)
+    ? Math.max(0, balanceOf(receiver.id) - (receiverRow?.need ?? 0))
     : 0
 
-  // Needs both flags: without a proxy there is nowhere to send the money, and
-  // without a receiver "non-receiver shortfall" would just be every shortfall.
+  /**
+   * Everything the receiver can spare: the salary that just landed, less the
+   * part it must hold back for its own expenses, plus whatever it was already
+   * carrying beyond them.
+   *
+   * Stated as what the receiver *has* rather than as what the proxy *needs*,
+   * because those diverge in a deficit month and only the first is an
+   * instruction that can actually be carried out. Adding up the far side —
+   * shortfalls plus leftover salary plus the surplus — gives the same answer
+   * whenever the salary covers everything, but in a deficit it asks for money
+   * that does not exist, and it double-counts the surplus, which funds the
+   * shortfall rather than adding to it.
+   *
+   * Needs both flags: without a proxy there is nowhere to send it, and without
+   * a receiver there is nothing to send it from.
+   */
   const transferToProxy =
-    !proxy || !receiver || salaryFree === null
+    !proxy || !receiver || actualSalary === null
       ? null
-      : nonReceiverShortfall + salaryFree + receiverSurplus
+      : Math.max(0, actualSalary - (receiverRow?.shortfall ?? 0) + receiverSurplus)
 
   /**
    * What the month actually costs once the money already sitting in the

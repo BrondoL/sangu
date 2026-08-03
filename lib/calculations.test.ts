@@ -102,9 +102,44 @@ describe('calculateMonthlySummary — receiver already holds more than it needs'
 })
 
 describe('calculateMonthlySummary — deficit month', () => {
+  const s = calculateMonthlySummary({ ...base, actualSalary: 5_000_000 })
+
   it('reports negative free money', () => {
-    const s = calculateMonthlySummary({ ...base, actualSalary: 5_000_000 })
     expect(s.freeMoney).toBe(-3_500_000)
+  })
+  it('never asks for more than the receiver can actually send', () => {
+    // BCA ends the month holding 500k + 5M and has to keep 2M for itself, so
+    // 3.5M is the most that can leave. Asking for the full 7M of shortfalls
+    // would be an instruction that cannot be carried out.
+    expect(s.transferToProxy).toBe(3_500_000)
+  })
+})
+
+describe('calculateMonthlySummary — deficit while the receiver is over-funded', () => {
+  // The two corrections interact here, which is the case that exposed the bug:
+  // the surplus helps fund the shortfall, it is not extra on top of it.
+  const s = calculateMonthlySummary({
+    accounts: [
+      { id: 'bca', name: 'BCA', isSalaryReceiver: true, isProxy: false },
+      { id: 'jago', name: 'Jago', isSalaryReceiver: false, isProxy: true },
+    ],
+    baseSalary: 3_000_000,
+    actualSalary: 3_000_000,
+    balances: [{ accountId: 'bca', balance: 5_000_000 }],
+    items: [
+      { accountId: 'bca', amount: 1_000_000, category: 'expense', isPaid: false },
+      { accountId: 'jago', amount: 10_000_000, category: 'expense', isPaid: false },
+    ],
+  })
+
+  it('sends everything the receiver can spare, and no more', () => {
+    // 5M on hand + 3M salary - 1M kept back = 7M.
+    expect(s.transferToProxy).toBe(7_000_000)
+  })
+  it('reports the hole that is left', () => {
+    // Jago needs 10M, only 7M arrives.
+    expect(s.freeMoney).toBe(-3_000_000)
+    expect(s.transferToProxy! - 10_000_000).toBe(s.freeMoney)
   })
 })
 
