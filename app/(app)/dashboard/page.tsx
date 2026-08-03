@@ -4,6 +4,7 @@ import { MonthPicker } from '@/components/month-picker'
 import { Eyebrow, PageHeader } from '@/components/kwitansi'
 import { SummaryCards } from '@/components/dashboard/summary-cards'
 import { AccountTable } from '@/components/dashboard/account-table'
+import { Breakdown } from '@/components/dashboard/breakdown'
 import { SharePie } from '@/components/dashboard/share-pie'
 import { TrendLine } from '@/components/dashboard/trend-line'
 import { getMonthlyData, getExpenseTrend } from '@/lib/queries/dashboard'
@@ -49,6 +50,13 @@ export default async function DashboardPage({
       </PageHeader>
 
       <SummaryCards summary={summary} actualSalary={input.actualSalary} />
+
+      <Breakdown
+        summary={summary}
+        actualSalary={input.actualSalary}
+        baseSalary={input.baseSalary}
+        receiverName={accounts.find((a) => a.is_salary_receiver)?.name ?? null}
+      />
 
       <AccountTable perAccount={summary.perAccount} accounts={accounts} />
 

@@ -64,6 +64,36 @@ Conventions worth keeping: uppercase eyebrows are for labels and column heads
 only, never for content — an account name or an amount inside a sentence stays
 in sentence case. Money inputs are a ruled line, not a boxed field.
 
+### Calculation corrections from the first real month, 2026-08-04
+
+Piloting against real Excel figures put the engine under conditions the spec's
+worked example never covered. Three corrections, each with tests; the spec
+carries an amendment for each.
+
+1. **The salary receiver's surplus was left stranded.** Shortfall is clamped at
+   zero, so a receiver already holding more than its own expenses was invisible.
+   The salary got swept to the proxy while money already sitting in the receiver
+   stayed idle, though both are free money — Rp 2.279.559 in the first month.
+   The receiver is the one account a transfer is leaving anyway, which is what
+   separates it from any other account in surplus.
+2. **"Sisa gaji" became wrong the moment (1) landed** — the transfer carried the
+   surplus but the leftover figure did not count it. It is now **uang bebas**,
+   salary minus the net shortfall, which is also exactly what the proxy still
+   holds after topping up every short account. Both directions are asserted.
+   Renamed because part of it never came from that month's pay, and it switches
+   to **Kurang** with the sign dropped when negative.
+3. **The transfer was unpayable in a deficit month.** Stated as what the proxy
+   *needs* it asked for money that did not exist and double-counted the surplus.
+   Restated as what the receiver *can spare*: `max(0, gaji − ditahan + kelebihan)`.
+   Algebraically identical whenever the salary covers everything, correct when it
+   does not.
+
+`Breakdown` on the dashboard writes the whole derivation out line by line. It
+exists because the first attempt — a terse hint under each stat card — left the
+owner of the app unable to tell what the numbers meant, which is the only test
+that matters. It also restores the base-salary comparison the spec asks for,
+which had been dropped when those hints replaced it.
+
 ### Robustness + PWA catch-up, 2026-08-04
 
 Four loose ends closed after the redesign audit:

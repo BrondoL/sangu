@@ -37,9 +37,6 @@ export function SummaryCards({
 }) {
   const freeMoney = summary.freeMoney ?? summary.freeMoneyVsBase
   const short = freeMoney < 0
-  // The gap between what the month costs and what the salary has to find is
-  // money that was already sitting where it was needed.
-  const coveredByBalances = summary.totalExpense - summary.totalShortfall
 
   // Why the transfer figure is missing, in the order the user can act on it.
   const missingRoles = [
@@ -119,15 +116,7 @@ export function SummaryCards({
             value={actualSalary}
             hint={actualSalary === null ? 'Belum diisi di Bulan Ini' : undefined}
           />
-          <Stat
-            label="Total kebutuhan"
-            value={summary.totalExpense}
-            hint={
-              coveredByBalances > 0
-                ? `${formatRupiah(coveredByBalances)} sudah tertutup saldo`
-                : undefined
-            }
-          />
+          <Stat label="Total kebutuhan" value={summary.totalExpense} />
           {/* Not "sisa gaji": part of this was already in the receiver, not out
               of this month's pay. It is what the proxy still holds once every
               short account has been topped up — and when there is not enough to
@@ -139,11 +128,6 @@ export function SummaryCards({
             }`}
             value={Math.abs(freeMoney)}
             tone={short ? 'deficit' : 'surplus'}
-            hint={
-              short
-                ? `Gaji tidak menutup kekurangan ${formatRupiah(summary.netShortfall)}`
-                : `Setelah menutup kekurangan ${formatRupiah(summary.netShortfall)}`
-            }
           />
         </div>
       </Card>
