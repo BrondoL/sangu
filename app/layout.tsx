@@ -36,7 +36,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
-        <Toaster />
+        {/* richColors gives error/success toasts their red/green treatment;
+            without it sonner renders every type in the neutral popover style. */}
+        <Toaster richColors />
       </body>
     </html>
   );
