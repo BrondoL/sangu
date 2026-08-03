@@ -166,6 +166,14 @@ describe('calculateMonthlySummary — edge cases', () => {
     expect(s.warnings).toContain('no_proxy')
     expect(s.transferToProxy).toBeNull()
   })
+  it('refuses to compute a transfer from an account to itself', () => {
+    // Nothing in the schema stops both flags landing on one row: the partial
+    // unique indexes only forbid two receivers or two proxies.
+    const both = accounts.map((a) => ({ ...a, isProxy: a.id === 'bca' }))
+    const s = calculateMonthlySummary({ ...base, accounts: both })
+    expect(s.warnings).toContain('receiver_is_proxy')
+    expect(s.transferToProxy).toBeNull()
+  })
   it('warns when no salary receiver', () => {
     const noRecv = accounts.map((a) => ({ ...a, isSalaryReceiver: false }))
     const s = calculateMonthlySummary({ ...base, accounts: noRecv })

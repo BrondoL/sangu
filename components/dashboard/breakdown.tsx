@@ -18,7 +18,7 @@ function Line({
   rule = false,
   total = false,
 }: {
-  op?: '−' | '='
+  op?: '−' | '+' | '='
   label: string
   value: number
   /** Draw the subtotal rule above this line. */
@@ -67,6 +67,14 @@ export function Breakdown({
   const vsBase = actualSalary !== null && actualSalary !== baseSalary
   const bonus = actualSalary !== null ? actualSalary - baseSalary : 0
 
+  // When the receiver's spare cash covers every shortfall on its own, the net
+  // figure goes below zero. Printing "Harus ditutup gaji −47.000.000" is
+  // arithmetically true and unreadable, so the line changes sides instead: the
+  // salary gains that much rather than losing a negative amount.
+  const covered = summary.netShortfall < 0
+  const netLabel = covered ? 'Kelebihan yang tersisa' : 'Harus ditutup gaji'
+  const netValue = Math.abs(summary.netShortfall)
+
   return (
     <Card>
       <CardContent>
@@ -111,12 +119,7 @@ export function Breakdown({
               />
             )}
             {showSurplus && (
-              <Line
-                op="="
-                label="Harus ditutup gaji"
-                value={summary.netShortfall}
-                rule
-              />
+              <Line op="=" label={netLabel} value={netValue} rule />
             )}
 
             <div className="mt-4">
@@ -124,7 +127,7 @@ export function Breakdown({
                 label={actualSalary === null ? 'Gaji base' : 'Gaji aktual'}
                 value={salary}
               />
-              <Line op="−" label="Harus ditutup gaji" value={summary.netShortfall} />
+              <Line op={covered ? '+' : '−'} label={netLabel} value={netValue} />
               <Line
                 op="="
                 label={short ? 'Kurang' : 'Uang bebas'}

@@ -43,6 +43,11 @@ export function calculateMonthlySummary(input: MonthlyCalcInput): MonthlySummary
   const receiver = accounts.find((a) => a.isSalaryReceiver)
   if (!proxy) warnings.push('no_proxy')
   if (!receiver) warnings.push('no_salary_receiver')
+  // The schema permits it — the partial unique indexes only forbid a second
+  // receiver or a second proxy, not both roles on one row. Transferring an
+  // account's money to itself is not an instruction, so refuse to state one.
+  const sameAccount = !!proxy && !!receiver && proxy.id === receiver.id
+  if (sameAccount) warnings.push('receiver_is_proxy')
 
   const receiverRow = receiver
     ? perAccount.find((a) => a.accountId === receiver.id)
@@ -79,7 +84,7 @@ export function calculateMonthlySummary(input: MonthlyCalcInput): MonthlySummary
    * a receiver there is nothing to send it from.
    */
   const transferToProxy =
-    !proxy || !receiver || actualSalary === null
+    !proxy || !receiver || sameAccount || actualSalary === null
       ? null
       : Math.max(0, actualSalary - (receiverRow?.shortfall ?? 0) + receiverSurplus)
 

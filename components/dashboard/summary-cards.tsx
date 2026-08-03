@@ -39,12 +39,14 @@ export function SummaryCards({
   const short = freeMoney < 0
 
   // Why the transfer figure is missing, in the order the user can act on it.
+  const sameAccount = summary.warnings.includes('receiver_is_proxy')
   const missingRoles = [
     summary.warnings.includes('no_proxy') && 'proxy',
     summary.warnings.includes('no_salary_receiver') && 'penerima gaji',
   ].filter(Boolean)
-  const transferHint =
-    missingRoles.length > 0
+  const transferHint = sameAccount
+    ? 'Pisahkan perannya dulu di Pengaturan.'
+    : missingRoles.length > 0
       ? `Tandai rekening ${missingRoles.join(' dan ')} di Pengaturan.`
       : 'Isi gaji aktual bulan ini untuk menghitung.'
 
@@ -60,8 +62,14 @@ export function SummaryCards({
             {summary.warnings.includes('no_salary_receiver') && (
               <p>Belum ada rekening penerima gaji.</p>
             )}
+            {sameAccount && (
+              <p>
+                Satu rekening ditandai penerima gaji sekaligus proxy — uangnya
+                akan dipindah ke dirinya sendiri.
+              </p>
+            )}
             <p className="opacity-80">
-              Angka transfer tidak dihitung sampai keduanya ditandai.
+              Angka transfer tidak dihitung sampai ini dibereskan.
             </p>
           </div>
         </div>

@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
   // Without this, client chunks and HMR are blocked and nothing hydrates.
   // Dev-only setting; ignored in production builds.
   allowedDevOrigins: ["172.28.235.15"],
+
+  // Nothing here uses next/image, but /_next/image is exposed regardless and is
+  // exempt from the auth proxy. Turning optimization off retires that endpoint
+  // rather than leaving sharp's libvips CVEs reachable for no benefit.
+  images: { unoptimized: true },
 };
 
 export default nextConfig;

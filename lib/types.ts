@@ -44,7 +44,10 @@ export interface CategoryTotal {
   total: number
 }
 
-export type CalcWarning = 'no_proxy' | 'no_salary_receiver'
+export type CalcWarning =
+  | 'no_proxy'
+  | 'no_salary_receiver'
+  | 'receiver_is_proxy'
 
 export interface MonthlySummary {
   totalExpense: number

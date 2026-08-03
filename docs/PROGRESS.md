@@ -99,6 +99,32 @@ you ask once, and after that it is in the way. Native rather than a Radix
 collapsible so the component stays a server component and ships no JavaScript,
 with keyboard support and the disclosure semantics already correct.
 
+### Pre-production review, 2026-08-04
+
+Checked rather than assumed: RLS is on with a policy on all eight tables
+(queried `pg_class`/`pg_policies` directly), Supabase's security advisor returns
+one WARN, the auth proxy calls `getUser()` so the session is validated server
+side, nothing secret is tracked by git, and no debug scaffolding survives. Four
+edge cases were driven through the engine — no accounts, zero salary, a receiver
+surplus larger than every shortfall, and one account carrying both roles.
+
+Three things that check turned up, all fixed:
+
+1. **`/_next/image` was reachable and pointless.** It is exempt from the auth
+   proxy, and `sharp` carries four high-severity libvips CVEs, while the app
+   uses `next/image` nowhere at all. `images: { unoptimized: true }` retires the
+   endpoint. (`npm audit fix --force` proposes downgrading Next to 9.3.3 — do
+   not. The remaining `postcss` advisory is build-time only, with no
+   externally-supplied CSS.)
+2. **One account could hold both roles.** The partial unique indexes forbid two
+   receivers or two proxies, not both flags on one row, and the result was a
+   silent instruction to move money from an account to itself. Now a
+   `receiver_is_proxy` warning, and no transfer figure.
+3. **A negative line in the breakdown.** When the receiver's spare cash covers
+   every shortfall the net figure goes below zero, and "Harus ditutup gaji
+   −47.000.000" is true and unreadable. The line changes sides instead: the
+   salary *gains* that much.
+
 ### Robustness + PWA catch-up, 2026-08-04
 
 Four loose ends closed after the redesign audit:
@@ -231,13 +257,10 @@ Supabase dashboard → Project Settings → API for project **`sangu`**
 
 The single auth user already exists and signup is disabled in that project.
 
-**The database is empty as of 2026-08-04.** Every application table was cleared
-to start the pilot against real numbers from the Excel sheet; only `auth.users`
-was left alone. The test data that used to be there — 4 accounts, 1 recurring
-expense, 1 instalment, 1 savings goal, base salary 15jt, and periods for 2026-08
-and 2026-09 — is kept as runnable inserts in
-`backups/2026-08-04-pre-wipe.sql`, in foreign-key order. Paste it into the
-Supabase SQL editor to get that state back.
+**The seed data was cleared on 2026-08-04** to start the pilot against real
+numbers from the Excel sheet; only `auth.users` was left alone. A snapshot of
+the old test data was kept for a while and then deleted once the real month was
+in — there is no rollback to it, and none is wanted.
 
 An empty `settings` table is safe: `getSettings` falls back to `base_salary: 0`
 when the row is absent, and `setBaseSalary` upserts with an explicit `user_id`,
