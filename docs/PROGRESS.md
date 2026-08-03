@@ -15,7 +15,7 @@ are ticked through Task 11) and `docs/superpowers/specs/2026-08-03-sangu-design.
 | 4. Database schema + RLS | ✅ done, migration applied |
 | 5. Supabase clients + auth proxy | ✅ done |
 | 6. Login / logout | ✅ done |
-| 7. App shell, nav, PWA | ✅ done |
+| 7. App shell, nav, PWA | ✅ done (no service worker — spec amended) |
 | 8. Query + mutation layer | ✅ done |
 | 9. Settings page | ✅ done, verified in browser |
 | 10. Current-month page | ✅ done, verified in browser |
@@ -31,6 +31,30 @@ sure there is a savings goal with a target amount, generate the current month,
 mark its saving item paid in `/current`, then confirm `/goals` shows the
 accumulated total, the remaining amount, an estimated completion month, and the
 setoran line switched to "Sudah menabung". Nothing else is known to be missing.
+
+## Spec audit, 2026-08-03
+
+The whole codebase was read against the spec after Task 12. Data model,
+calculation order, generation rules, the Target formula, and the eight required
+test cases all matched. Four things did not, and three were fixed:
+
+1. **Dashboard hid deactivated accounts that still had data.**
+   `getMonthlyData` filtered accounts to `is_active`, but loaded every item in
+   the period. An item belonging to an account retired since still counted in
+   Total pengeluaran while its row and its shortfall vanished — so *Transfer ke
+   proxy* came out too low and *Sisa gaji* too high on old months. It now loads
+   all accounts and keeps the inactive ones that have an item or a balance in
+   that period. Spec §Kasus Tepi required this; the query layer has no tests, so
+   this one is only covered by types and the browser.
+2. **`transferToProxy` was still computed with no salary receiver.** Spec and
+   plan both say the number is not computed when either role is unassigned; only
+   the missing-proxy case was handled. Now null for either, with the assertion
+   added to the existing `no_salary_receiver` test. The dashboard hint text was
+   rewritten to name whichever role is missing.
+3. **The Target card printed "Perkiraan tercapai —".** Spec asks for the row to
+   be absent when there is no target amount or no monthly deposit.
+4. **No service worker.** Left unbuilt on purpose; the spec's PWA section now
+   carries the amendment explaining why. Plan Task 7 never included one either.
 
 ## Picking this up on another machine
 

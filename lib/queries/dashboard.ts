@@ -47,23 +47,30 @@ export async function getMonthlyData(month: string): Promise<MonthlyCalcInput> {
     { data: period, error: pErr },
     { data: settings, error: sErr },
   ] = await Promise.all([
-    supabase.from('accounts').select('*').eq('is_active', true).order('sort_order'),
+    // Deliberately unfiltered: an account deactivated today may still carry
+    // items in an old month, and that month has to keep showing them.
+    supabase.from('accounts').select('*').order('sort_order'),
     supabase.from('monthly_periods').select('*').eq('month', iso).maybeSingle(),
     supabase.from('settings').select('base_salary').maybeSingle(),
   ])
   const headErr = aErr ?? pErr ?? sErr
   if (headErr) throw headErr
 
-  const calcAccounts = (accounts ?? []).map((a) => ({
+  const toCalcAccount = (a: {
+    id: string
+    name: string
+    is_salary_receiver: boolean
+    is_proxy: boolean
+  }) => ({
     id: a.id,
     name: a.name,
     isSalaryReceiver: a.is_salary_receiver,
     isProxy: a.is_proxy,
-  }))
+  })
 
   if (!period) {
     return {
-      accounts: calcAccounts,
+      accounts: (accounts ?? []).filter((a) => a.is_active).map(toCalcAccount),
       items: [],
       balances: [],
       actualSalary: null,
@@ -85,8 +92,17 @@ export async function getMonthlyData(month: string): Promise<MonthlyCalcInput> {
   const bodyErr = iErr ?? bErr
   if (bodyErr) throw bodyErr
 
+  // A deactivated account earns its row back only for the months it took part
+  // in — otherwise every retired account would linger as an empty row forever.
+  const involved = new Set([
+    ...(items ?? []).map((i) => i.account_id),
+    ...(balances ?? []).map((b) => b.account_id),
+  ])
+
   return {
-    accounts: calcAccounts,
+    accounts: (accounts ?? [])
+      .filter((a) => a.is_active || involved.has(a.id))
+      .map(toCalcAccount),
     items: (items ?? []).map((i) => ({
       accountId: i.account_id,
       amount: i.amount,

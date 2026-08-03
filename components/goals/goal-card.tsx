@@ -101,10 +101,14 @@ export function GoalCard({
           {remaining !== null && (
             <Row label="Sisa" value={formatRupiah(remaining)} />
           )}
-          <Row
-            label="Perkiraan tercapai"
-            value={completionMonth ? formatMonthLabel(completionMonth) : '—'}
-          />
+          {/* No target amount or no monthly deposit means no arrival date to
+              estimate — the spec asks for the row to be absent, not empty. */}
+          {completionMonth && (
+            <Row
+              label="Perkiraan tercapai"
+              value={formatMonthLabel(completionMonth)}
+            />
+          )}
           {goal.target_date && (
             <Row label="Target tanggal" value={formatDate(goal.target_date)} />
           )}

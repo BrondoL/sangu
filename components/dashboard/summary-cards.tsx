@@ -45,8 +45,17 @@ export function SummaryCards({
   summary: MonthlySummary
   actualSalary: number | null
 }) {
-  const hasProxy = !summary.warnings.includes('no_proxy')
   const sufficiency = summary.sufficiencyVsActual ?? summary.sufficiencyVsBase
+
+  // Why the transfer number is missing, most-actionable reason first.
+  const missingRoles = [
+    summary.warnings.includes('no_proxy') && 'proxy',
+    summary.warnings.includes('no_salary_receiver') && 'penerima gaji',
+  ].filter(Boolean)
+  const transferHint =
+    missingRoles.length > 0
+      ? `Tandai rekening ${missingRoles.join(' dan ')} di Pengaturan.`
+      : 'Isi gaji aktual bulan ini untuk menghitung.'
 
   return (
     <div className="space-y-4">
@@ -55,11 +64,12 @@ export function SummaryCards({
           <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
           <div>
             {summary.warnings.includes('no_proxy') && (
-              <p>Belum ada rekening yang ditandai sebagai proxy — angka transfer tidak dihitung.</p>
+              <p>Belum ada rekening yang ditandai sebagai proxy.</p>
             )}
             {summary.warnings.includes('no_salary_receiver') && (
               <p>Belum ada rekening penerima gaji.</p>
             )}
+            <p>Angka transfer tidak dihitung sampai keduanya ditandai.</p>
           </div>
         </div>
       )}
@@ -77,9 +87,7 @@ export function SummaryCards({
           </p>
           <p className="text-muted-foreground mt-1 text-xs">
             {summary.transferToProxy === null
-              ? hasProxy
-                ? 'Isi gaji aktual bulan ini untuk menghitung.'
-                : 'Tandai satu rekening sebagai proxy di Pengaturan.'
+              ? transferHint
               : 'Kekurangan rekening non-penerima gaji + sisa gaji.'}
           </p>
         </CardContent>

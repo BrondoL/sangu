@@ -343,6 +343,8 @@ Komponen UI tidak menghitung apa pun. Batas ini yang membuat rumus dapat diuji d
 
 Manifest, ikon, dan service worker untuk shell aplikasi agar dapat dipasang di ponsel dan terbuka cepat. Bukan offline-first — data tetap memerlukan koneksi. Aplikasi dipakai sebulan sekali saat gajian, bukan dalam kondisi tanpa sinyal.
 
+> **Amendemen 2026-08-03 — service worker dicoret.** Yang dibangun hanya manifest dan ikon. Chrome tidak lagi mensyaratkan service worker agar aplikasi dapat dipasang, sehingga satu-satunya manfaat tersisa adalah shell yang terbuka lebih cepat — sementara SW yang men-cache aset Next.js berisiko menyajikan chunk basi setelah deploy dan memunculkan error runtime. Untuk aplikasi yang dibuka sebulan sekali dan memang butuh koneksi, biayanya tidak sepadan. Alasan yang sama dipakai spec ini untuk melewatkan tes UI.
+
 ## Testing
 
 Vitest untuk mesin perhitungan. Kasus yang wajib ada:

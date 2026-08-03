@@ -58,8 +58,12 @@ export function calculateMonthlySummary(input: MonthlyCalcInput): MonthlySummary
   const freeMoney =
     sufficiencyVsActual === null ? null : Math.max(0, sufficiencyVsActual)
 
+  // Needs both flags: without a proxy there is nowhere to send the money, and
+  // without a receiver "non-receiver shortfall" would just be every shortfall.
   const transferToProxy =
-    !proxy || freeMoney === null ? null : nonReceiverShortfall + freeMoney
+    !proxy || !receiver || freeMoney === null
+      ? null
+      : nonReceiverShortfall + freeMoney
 
   return {
     totalExpense,

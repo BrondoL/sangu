@@ -91,5 +91,8 @@ describe('calculateMonthlySummary — edge cases', () => {
     const noRecv = accounts.map((a) => ({ ...a, isSalaryReceiver: false }))
     const s = calculateMonthlySummary({ ...base, accounts: noRecv })
     expect(s.warnings).toContain('no_salary_receiver')
+    // Without a receiver there is nothing to transfer *from*, so the number
+    // would be meaningless — the spec says do not compute it.
+    expect(s.transferToProxy).toBeNull()
   })
 })
