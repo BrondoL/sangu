@@ -1,8 +1,10 @@
 'use client'
 
+import { useTransition } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { formatMonthLabel, shiftMonth, toMonthParam } from '@/lib/month'
 
 /**
@@ -14,15 +16,21 @@ export function MonthPicker({ defaultMonth }: { defaultMonth: string }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const month = toMonthParam(searchParams.get('month') ?? defaultMonth)
+  const [pending, startTransition] = useTransition()
 
+  // Inside a transition the label can report that the month is still loading.
+  // The arrows stay live so you can keep stepping without waiting for each one.
   const go = (delta: number) => {
     const params = new URLSearchParams(searchParams)
     params.set('month', shiftMonth(month, delta))
-    router.push(`${pathname}?${params}`)
+    startTransition(() => router.push(`${pathname}?${params}`))
   }
 
   return (
-    <div className="border-border bg-card inline-flex items-center gap-0.5 rounded-lg border p-0.5">
+    <div
+      className="border-border bg-card inline-flex items-center gap-0.5 rounded-lg border p-0.5"
+      aria-busy={pending}
+    >
       <Button
         variant="ghost"
         size="icon-sm"
@@ -31,7 +39,12 @@ export function MonthPicker({ defaultMonth }: { defaultMonth: string }) {
       >
         <ChevronLeft className="size-4" />
       </Button>
-      <span className="min-w-[8.75rem] text-center font-mono text-[0.8rem] font-medium tracking-[0.06em] uppercase">
+      <span
+        className={cn(
+          'min-w-[8.75rem] text-center font-mono text-[0.8rem] font-medium tracking-[0.06em] uppercase transition-opacity',
+          pending && 'opacity-45'
+        )}
+      >
         {formatMonthLabel(month)}
       </span>
       <Button

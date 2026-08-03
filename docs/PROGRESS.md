@@ -64,6 +64,32 @@ Conventions worth keeping: uppercase eyebrows are for labels and column heads
 only, never for content — an account name or an amount inside a sentence stays
 in sentence case. Money inputs are a ruled line, not a boxed field.
 
+### Robustness + PWA catch-up, 2026-08-04
+
+Four loose ends closed after the redesign audit:
+
+1. **Icons and manifest had been left behind by the redesign.** They still said
+   `#0a0a0a` with a white "S", while the app had moved to nila `#0c1626` — so an
+   installed copy showed a splash screen and title bar in the old palette. The
+   mark is now the wordmark's kunyit-on-nila "S" in IBM Plex Mono, rendered
+   through headless Chromium so it uses the real brand font, and sized inside
+   the maskable safe zone. `any` and `maskable` are declared as separate icon
+   entries rather than one combined `"any maskable"`.
+2. **`app/(app)/error.tsx` + `app/error.tsx` + `app/not-found.tsx`.** Every
+   query in `lib/queries/` rethrows the Supabase error, so before this a lapsed
+   session produced Next's bare production error page. The app-level boundary
+   sits inside the shell so the nav stays usable. The raw message is shown on
+   purpose — this app has one user and they wrote it.
+3. **Copy button on the transfer figure**, copying bare digits with no "Rp" and
+   no separators, since the next thing that happens to that number is being
+   pasted into a banking app.
+4. **Loading states.** A `loading.tsx` skeleton per route, plus the month picker
+   dims its label during the transition; its arrows stay live so you can keep
+   stepping without waiting for each fetch.
+
+Note the 404 is only reachable while signed in — the auth proxy redirects
+anonymous requests for unknown paths to `/login`, which is the right call.
+
 ### Settings page, 2026-08-04
 
 Settings is the master register at the back of the ledger, and it now reads that

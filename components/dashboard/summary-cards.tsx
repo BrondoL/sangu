@@ -1,6 +1,7 @@
 import { TriangleAlert } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Amount, Eyebrow } from '@/components/kwitansi'
+import { CopyAmount } from './copy-amount'
 import { formatRupiah } from '@/lib/format'
 import { terbilangRupiah } from '@/lib/terbilang'
 import type { MonthlySummary } from '@/lib/types'
@@ -73,7 +74,14 @@ export function SummaryCards({
       */}
       <Card className="border-primary relative border-l-3 py-0">
         <CardContent className="px-5 py-5">
-          <Eyebrow>Transfer ke rekening proxy</Eyebrow>
+          <div className="flex items-start justify-between gap-3">
+            <Eyebrow>Transfer ke rekening proxy</Eyebrow>
+            {summary.transferToProxy !== null && (
+              <div className="-mt-1.5 -mr-2 shrink-0">
+                <CopyAmount value={summary.transferToProxy} />
+              </div>
+            )}
+          </div>
 
           <div className="mt-2.5">
             <Amount value={summary.transferToProxy} size="hero" />
