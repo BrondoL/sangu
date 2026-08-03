@@ -12,8 +12,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RupiahInput } from '@/components/rupiah-input'
-import { FormDialog } from './form-dialog'
-import { DeleteButton } from './delete-button'
+import { FormDialog } from '@/components/form-dialog'
+import { DeleteButton } from '@/components/delete-button'
 import { AccountPicker, PaymentMethodPicker } from './pickers'
 import {
   saveRecurringAction,
