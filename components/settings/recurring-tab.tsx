@@ -1,12 +1,4 @@
 import { Plus, Pencil } from 'lucide-react'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -15,6 +7,7 @@ import { RupiahInput } from '@/components/rupiah-input'
 import { FormDialog } from '@/components/form-dialog'
 import { DeleteButton } from '@/components/delete-button'
 import { AccountPicker, PaymentMethodPicker } from './pickers'
+import { DefinitionList, DefinitionRow, DefinitionTotal } from './definition-list'
 import {
   saveRecurringAction,
   deleteRecurringAction,
@@ -61,12 +54,26 @@ export function RecurringTab({
   accounts: Account[]
 }) {
   const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? '—'
+  // Only active rows are copied into a new month, so only they belong in the
+  // figure that answers "what do I owe every month".
+  const monthly = items
+    .filter((i) => i.is_active)
+    .reduce((sum, i) => sum + i.default_amount, 0)
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
+    <DefinitionList
+      title="Pengeluaran rutin"
+      description="Disalin ke tiap bulan baru. Nominalnya mengikuti bulan lalu kalau ada."
+      unit="dalam rupiah"
+      isEmpty={items.length === 0}
+      empty={
+        accounts.length === 0
+          ? 'Tambah rekening dulu — setiap pengeluaran rutin harus menempel pada satu rekening.'
+          : 'Belum ada pengeluaran rutin. Listrik, internet, langganan — apa pun yang datang tiap bulan.'
+      }
+      action={
         <FormDialog
-          title="Tambah expense rutin"
+          title="Tambah pengeluaran rutin"
           action={saveRecurringAction}
           trigger={
             <Button size="sm" disabled={accounts.length === 0}>
@@ -76,58 +83,47 @@ export function RecurringTab({
         >
           <RecurringFields accounts={accounts} />
         </FormDialog>
-      </div>
-
-      {items.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          {accounts.length === 0
-            ? 'Tambah rekening dulu sebelum membuat expense rutin.'
-            : 'Belum ada expense rutin.'}
-        </p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nama</TableHead>
-              <TableHead>Rekening</TableHead>
-              <TableHead className="text-right">Nominal</TableHead>
-              <TableHead className="w-24" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell className={item.is_active ? '' : 'text-muted-foreground'}>
-                  {item.name}
-                  {!item.is_active && ' (nonaktif)'}
-                </TableCell>
-                <TableCell>{nameOf(item.account_id)}</TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatRupiah(item.default_amount)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <FormDialog
-                    title={`Ubah ${item.name}`}
-                    action={saveRecurringAction}
-                    trigger={
-                      <Button variant="ghost" size="icon" aria-label={`Ubah ${item.name}`}>
-                        <Pencil className="size-4" />
-                      </Button>
-                    }
-                  >
-                    <RecurringFields accounts={accounts} item={item} />
-                  </FormDialog>
-                  <DeleteButton
-                    id={item.id}
-                    label={item.name}
-                    action={deleteRecurringAction}
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </div>
+      }
+    >
+      {items.map((item) => (
+        <DefinitionRow
+          key={item.id}
+          name={item.name}
+          inactive={!item.is_active}
+          meta={
+            <>
+              {nameOf(item.account_id)}
+              {item.payment_method === 'credit' && ' · kartu kredit'}
+            </>
+          }
+          right={
+            <span className="amount text-sm">
+              {item.default_amount.toLocaleString('id-ID')}
+            </span>
+          }
+          actions={
+            <>
+              <FormDialog
+                title={`Ubah ${item.name}`}
+                action={saveRecurringAction}
+                trigger={
+                  <Button variant="ghost" size="icon-sm" aria-label={`Ubah ${item.name}`}>
+                    <Pencil className="size-4" />
+                  </Button>
+                }
+              >
+                <RecurringFields accounts={accounts} item={item} />
+              </FormDialog>
+              <DeleteButton
+                id={item.id}
+                label={item.name}
+                action={deleteRecurringAction}
+              />
+            </>
+          }
+        />
+      ))}
+      <DefinitionTotal label="Jumlah per bulan">{formatRupiah(monthly)}</DefinitionTotal>
+    </DefinitionList>
   )
 }

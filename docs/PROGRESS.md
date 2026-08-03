@@ -64,6 +64,36 @@ Conventions worth keeping: uppercase eyebrows are for labels and column heads
 only, never for content — an account name or an amount inside a sentence stays
 in sentence case. Money inputs are a ruled line, not a boxed field.
 
+### Settings page, 2026-08-04
+
+Settings is the master register at the back of the ledger, and it now reads that
+way. `components/settings/definition-list.tsx` holds the shared shell all four
+lists wear, so the tabs no longer each reinvent the layout:
+
+- Every list states what it is and what it feeds, and its **Tambah** button is
+  anchored to that header rather than floating alone above the page.
+- Rows follow the money rail — name, a meta line, the figure, then controls.
+  The unit sits in the header (`dalam rupiah`) instead of repeating "Rp" down
+  the column, and each register closes on a total: the fixed monthly commitment
+  it represents.
+- Roles and states are tags: penerima gaji, proxy, kartu kredit, nonaktif,
+  lunas. Instalments show which month of the tenor they are on plus a bar —
+  only while actually running, since a full bar on a settled one and an empty
+  one on a future one both just read as a stray rule.
+- Tab labels carry counts, so an empty register is visible without opening it.
+- `monthsBetween` was added to `lib/month.ts` (pure, tested) for the tenor
+  position.
+
+Two layout traps worth remembering, both hit here:
+
+- **Don't `truncate` a line that holds several facts joined by "·".** Clipping
+  drops the last fact entirely rather than shortening it. That line wraps now.
+- **Don't put mixed text and tags in a flex row.** Every text run becomes its
+  own flex item, so the row gap lands on top of the spaces already in the copy
+  and separators get double-spaced. It flows as ordinary text with inline tags.
+  Related: JSX strips whitespace between two elements on separate lines, which
+  glues "BCA" to "·" — those metas are plain template strings.
+
 ### Responsive pass, 2026-08-04
 
 Reviewed at 375, 768 and 1440 in both modes. Three real defects, all fixed:

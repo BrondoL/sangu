@@ -1,12 +1,4 @@
 import { Plus, Pencil } from 'lucide-react'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,12 +6,18 @@ import { RupiahInput } from '@/components/rupiah-input'
 import { FormDialog } from '@/components/form-dialog'
 import { DeleteButton } from '@/components/delete-button'
 import { AccountPicker, PaymentMethodPicker } from './pickers'
+import { DefinitionList, DefinitionRow, DefinitionTotal } from './definition-list'
 import {
   saveInstallmentAction,
   deleteInstallmentAction,
 } from '@/app/(app)/settings/actions'
 import { formatRupiah } from '@/lib/format'
-import { formatMonthLabel, shiftMonth, toMonthParam } from '@/lib/month'
+import {
+  formatMonthLabel,
+  monthsBetween,
+  shiftMonth,
+  toMonthParam,
+} from '@/lib/month'
 import type { Tables } from '@/lib/database.types'
 
 type Installment = Tables<'installments'>
@@ -84,12 +82,39 @@ export function InstallmentsTab({
   currentMonth: string
 }) {
   const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? '—'
-  const lastMonth = (i: Installment) =>
-    formatMonthLabel(shiftMonth(i.start_month, i.tenor_months - 1))
+
+  /** Which instalment of the tenor `currentMonth` is, clamped to the window. */
+  const progressOf = (i: Installment) => {
+    const elapsed = monthsBetween(i.start_month, currentMonth) + 1
+    return {
+      paidCount: Math.max(0, Math.min(i.tenor_months, elapsed)),
+      notStarted: elapsed <= 0,
+      finished: elapsed > i.tenor_months,
+      lastMonth: formatMonthLabel(shiftMonth(i.start_month, i.tenor_months - 1)),
+    }
+  }
+
+  // A finished instalment stops generating on its own, so it is no longer part
+  // of this month's commitment even though the row stays in the register.
+  const monthly = items
+    .filter((i) => {
+      const { notStarted, finished } = progressOf(i)
+      return !notStarted && !finished
+    })
+    .reduce((sum, i) => sum + i.monthly_amount, 0)
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
+    <DefinitionList
+      title="Cicilan"
+      description="Berhenti sendiri begitu tenornya habis. Nominalnya selalu dari sini, tidak pernah mewarisi bulan lalu."
+      unit="dalam rupiah"
+      isEmpty={items.length === 0}
+      empty={
+        accounts.length === 0
+          ? 'Tambah rekening dulu — setiap cicilan harus menempel pada satu rekening.'
+          : 'Belum ada cicilan.'
+      }
+      action={
         <FormDialog
           title="Tambah cicilan"
           action={saveInstallmentAction}
@@ -101,63 +126,81 @@ export function InstallmentsTab({
         >
           <InstallmentFields accounts={accounts} currentMonth={currentMonth} />
         </FormDialog>
-      </div>
-
-      {items.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          {accounts.length === 0
-            ? 'Tambah rekening dulu sebelum membuat cicilan.'
-            : 'Belum ada cicilan.'}
-        </p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nama</TableHead>
-              <TableHead>Rekening</TableHead>
-              <TableHead>Selesai</TableHead>
-              <TableHead className="text-right">Per bulan</TableHead>
-              <TableHead className="w-24" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell>{item.name}</TableCell>
-                <TableCell>{nameOf(item.account_id)}</TableCell>
-                <TableCell className="text-muted-foreground text-sm">
-                  {lastMonth(item)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {formatRupiah(item.monthly_amount)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <FormDialog
-                    title={`Ubah ${item.name}`}
-                    action={saveInstallmentAction}
-                    trigger={
-                      <Button variant="ghost" size="icon" aria-label={`Ubah ${item.name}`}>
-                        <Pencil className="size-4" />
-                      </Button>
-                    }
-                  >
-                    <InstallmentFields
-                      accounts={accounts}
-                      item={item}
-                      currentMonth={currentMonth}
-                    />
-                  </FormDialog>
-                  <DeleteButton
-                    id={item.id}
-                    label={item.name}
-                    action={deleteInstallmentAction}
+      }
+    >
+      {items.map((item) => {
+        const { paidCount, notStarted, finished, lastMonth } = progressOf(item)
+        const ratio = paidCount / item.tenor_months
+        return (
+          <DefinitionRow
+            key={item.id}
+            name={item.name}
+            inactive={finished}
+            inactiveLabel="Lunas"
+            meta={
+              // Plain strings, not sibling elements: JSX drops the whitespace
+              // between two elements on separate lines and glues "BCA" to "·".
+              finished
+                ? nameOf(item.account_id)
+                : notStarted
+                  ? `${nameOf(item.account_id)} · mulai ${formatMonthLabel(item.start_month)}`
+                  : `${nameOf(item.account_id)} · bulan ke-${paidCount} dari ${item.tenor_months} · selesai ${lastMonth}`
+            }
+            right={
+              <span className={finished ? 'amount text-muted-foreground text-sm' : 'amount text-sm'}>
+                {item.monthly_amount.toLocaleString('id-ID')}
+              </span>
+            }
+            below={
+              // How far through the tenor you are is the one thing a list of
+              // instalments should show at a glance — but only while one is
+              // actually running. A full bar on a settled instalment and an
+              // empty one on a future instalment both just read as a stray rule.
+              !finished &&
+              !notStarted && (
+                <div
+                  className="bg-muted mt-2 h-1 w-full overflow-hidden rounded-full"
+                  role="progressbar"
+                  aria-label={`Progres cicilan ${item.name}`}
+                  aria-valuenow={paidCount}
+                  aria-valuemin={0}
+                  aria-valuemax={item.tenor_months}
+                >
+                  <div
+                    className="bg-primary h-full"
+                    style={{ width: `${ratio * 100}%` }}
                   />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </div>
+                </div>
+              )
+            }
+            actions={
+              <>
+                <FormDialog
+                  title={`Ubah ${item.name}`}
+                  action={saveInstallmentAction}
+                  trigger={
+                    <Button variant="ghost" size="icon-sm" aria-label={`Ubah ${item.name}`}>
+                      <Pencil className="size-4" />
+                    </Button>
+                  }
+                >
+                  <InstallmentFields
+                    accounts={accounts}
+                    item={item}
+                    currentMonth={currentMonth}
+                  />
+                </FormDialog>
+                <DeleteButton
+                  id={item.id}
+                  label={item.name}
+                  action={deleteInstallmentAction}
+                />
+              </>
+            }
+          />
+        )
+      })}
+      <DefinitionTotal label="Jalan bulan ini">{formatRupiah(monthly)}</DefinitionTotal>
+    </DefinitionList>
   )
 }

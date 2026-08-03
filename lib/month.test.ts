@@ -5,6 +5,7 @@ import {
   toMonthParam,
   formatMonthLabel,
   currentMonthParam,
+  monthsBetween,
 } from './month'
 
 describe('shiftMonth', () => {
@@ -41,6 +42,24 @@ describe('currentMonthParam', () => {
   })
   it('stays in the current month mid-month', () => {
     expect(currentMonthParam(new Date('2026-08-15T12:00:00Z'))).toBe('2026-08')
+  })
+})
+
+describe('monthsBetween', () => {
+  it('counts whole months forward', () => {
+    expect(monthsBetween('2026-08', '2026-11')).toBe(3)
+  })
+  it('is zero for the same month', () => {
+    expect(monthsBetween('2026-08', '2026-08')).toBe(0)
+  })
+  it('goes negative when the target is earlier', () => {
+    expect(monthsBetween('2026-08', '2026-05')).toBe(-3)
+  })
+  it('crosses years', () => {
+    expect(monthsBetween('2025-11', '2026-02')).toBe(3)
+  })
+  it('accepts full ISO dates and ignores the day', () => {
+    expect(monthsBetween('2026-08-01', '2027-08-31')).toBe(12)
   })
 })
 

@@ -16,6 +16,12 @@ import {
 import { currentMonthParam } from '@/lib/month'
 import { logout } from '@/app/auth/actions'
 
+function Count({ n }: { n: number }) {
+  return (
+    <span className="amount text-muted-foreground ml-1 text-[0.7rem]">{n}</span>
+  )
+}
+
 export default async function SettingsPage() {
   const [accounts, recurring, installments, savingsGoals, settings] =
     await Promise.all([
@@ -41,10 +47,20 @@ export default async function SettingsPage() {
 
       <Tabs defaultValue="accounts">
         <TabsList className="w-full">
-          <TabsTrigger value="accounts">Rekening</TabsTrigger>
-          <TabsTrigger value="recurring">Rutin</TabsTrigger>
-          <TabsTrigger value="installments">Cicilan</TabsTrigger>
-          <TabsTrigger value="savings">Target</TabsTrigger>
+          {/* The count is the cheapest way to see which registers are still
+              empty without opening each one. */}
+          <TabsTrigger value="accounts">
+            Rekening <Count n={accounts.length} />
+          </TabsTrigger>
+          <TabsTrigger value="recurring">
+            Rutin <Count n={recurring.length} />
+          </TabsTrigger>
+          <TabsTrigger value="installments">
+            Cicilan <Count n={installments.length} />
+          </TabsTrigger>
+          <TabsTrigger value="savings">
+            Target <Count n={savingsGoals.length} />
+          </TabsTrigger>
           <TabsTrigger value="salary">Gaji</TabsTrigger>
         </TabsList>
 

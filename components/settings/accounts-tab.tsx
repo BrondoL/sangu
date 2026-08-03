@@ -1,19 +1,11 @@
 import { Plus, Pencil } from 'lucide-react'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FormDialog } from '@/components/form-dialog'
 import { DeleteButton } from '@/components/delete-button'
+import { DefinitionList, DefinitionRow, Tag } from './definition-list'
 import { saveAccountAction, deleteAccountAction } from '@/app/(app)/settings/actions'
 import type { Tables } from '@/lib/database.types'
 
@@ -77,8 +69,12 @@ function AccountFields({ account }: { account?: Account }) {
 
 export function AccountsTab({ accounts }: { accounts: Account[] }) {
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
+    <DefinitionList
+      title="Rekening"
+      description="Penerima gaji dan proxy yang menentukan angka transfer di Dashboard."
+      isEmpty={accounts.length === 0}
+      empty="Belum ada rekening. Tambahkan satu dulu — semua definisi lain menempel padanya."
+      action={
         <FormDialog
           title="Tambah rekening"
           action={saveAccountAction}
@@ -90,54 +86,49 @@ export function AccountsTab({ accounts }: { accounts: Account[] }) {
         >
           <AccountFields />
         </FormDialog>
-      </div>
-
-      {accounts.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Belum ada rekening.</p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Rekening</TableHead>
-              <TableHead>Peran</TableHead>
-              <TableHead className="w-24" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {accounts.map((account) => (
-              <TableRow key={account.id}>
-                <TableCell className={account.is_active ? '' : 'text-muted-foreground'}>
-                  {account.name}
-                  {!account.is_active && ' (nonaktif)'}
-                </TableCell>
-                <TableCell className="space-x-1">
-                  {account.is_salary_receiver && <Badge variant="secondary">Gaji</Badge>}
-                  {account.is_proxy && <Badge variant="secondary">Proxy</Badge>}
-                  {account.has_credit_card && <Badge variant="outline">CC</Badge>}
-                </TableCell>
-                <TableCell className="text-right">
-                  <FormDialog
-                    title={`Ubah ${account.name}`}
-                    action={saveAccountAction}
-                    trigger={
-                      <Button variant="ghost" size="icon" aria-label={`Ubah ${account.name}`}>
-                        <Pencil className="size-4" />
-                      </Button>
-                    }
+      }
+    >
+      {accounts.map((account) => (
+        <DefinitionRow
+          key={account.id}
+          name={account.name}
+          inactive={!account.is_active}
+          meta={
+            <>
+              {account.is_salary_receiver && <Tag tone="accent">Penerima gaji</Tag>}
+              {account.is_proxy && <Tag tone="accent">Proxy</Tag>}
+              {account.has_credit_card && <Tag>Kartu kredit</Tag>}
+              {!account.is_salary_receiver &&
+                !account.is_proxy &&
+                !account.has_credit_card && <span>Tanpa peran khusus</span>}
+            </>
+          }
+          actions={
+            <>
+              <FormDialog
+                title={`Ubah ${account.name}`}
+                action={saveAccountAction}
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Ubah ${account.name}`}
                   >
-                    <AccountFields account={account} />
-                  </FormDialog>
-                  <DeleteButton
-                    id={account.id}
-                    label={account.name}
-                    action={deleteAccountAction}
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </div>
+                    <Pencil className="size-4" />
+                  </Button>
+                }
+              >
+                <AccountFields account={account} />
+              </FormDialog>
+              <DeleteButton
+                id={account.id}
+                label={account.name}
+                action={deleteAccountAction}
+              />
+            </>
+          }
+        />
+      ))}
+    </DefinitionList>
   )
 }

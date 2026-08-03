@@ -41,6 +41,13 @@ export function shiftMonth(month: string, delta: number): string {
   return `${year}-${String(monthNo).padStart(2, '0')}`
 }
 
+/** Whole months from `from` to `to`; negative when `to` is the earlier one. */
+export function monthsBetween(from: string, to: string): number {
+  const [fy, fm] = parts(from)
+  const [ty, tm] = parts(to)
+  return (ty * 12 + tm) - (fy * 12 + fm)
+}
+
 /**
  * The month "now" belongs to, in WIB — not the server's timezone, which on a
  * hosted deployment is usually UTC and would flip a day early.
