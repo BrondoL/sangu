@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sangu
 
-## Getting Started
+Perencana anggaran bulanan untuk satu orang. Menggantikan spreadsheet Excel yang
+ditimpa tiap bulan, jadi riwayatnya hilang.
 
-First, run the development server:
+*Sangu* — bahasa Jawa/Sunda untuk bekal.
+
+Satu pertanyaan yang dijawab aplikasi ini tiap gajian: **berapa yang harus
+ditransfer dari rekening penerima gaji ke rekening proxy bulan ini.** Semua
+halaman lain ada untuk membuat angka itu benar.
+
+## Cara kerjanya
+
+Dua lapis data. **Definisi** jarang berubah — rekening, pengeluaran rutin,
+cicilan, target tabungan, gaji base. **Snapshot bulanan** dibuat dengan menyalin
+definisi yang masih aktif, lalu disunting sesuai kenyataan bulan itu. Salinannya
+mandiri: mengubah nominal bulan berjalan tidak menyentuh bulan lalu maupun
+definisinya.
+
+Nominal bulan baru mewarisi bulan sebelumnya kalau ada, karena angka riil
+biasanya lebih dekat ke kebenaran daripada nilai definisi. Dua pengecualian:
+cicilan selalu memakai nominal definisi, dan tagihan kartu kredit selalu mulai
+dari nol.
+
+Cicilan berhenti tergenerate sendiri begitu tenornya habis.
+
+## Menjalankan
 
 ```bash
+npm install
+cp .env.local.example .env.local   # isi kedua nilainya
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Keduanya dari Supabase → Project Settings → API. Tidak ada halaman registrasi;
+satu user dibuat manual lewat dashboard Supabase dan signup dimatikan.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm test        # Vitest
+npm run lint
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Aturan yang dipegang
 
-## Learn More
+- **Semua nominal integer rupiah.** Tidak pernah float. Diformat hanya di tepi UI.
+- **Tidak ada perhitungan di komponen.** Semua angka berasal dari fungsi murni di
+  `lib/` yang tidak menyentuh database, sehingga bisa diuji sepenuhnya. Komponen
+  hanya menampilkan.
+- **RLS di semua tabel**, dengan policy `user_id = auth.uid()`.
+- **Peran rekening berupa flag**, bukan nilai hardcode. Penerima gaji dan proxy
+  ditentukan lewat centang, jadi pindah bank cukup ganti centang.
 
-To learn more about Next.js, take a look at the following resources:
+## Struktur
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+lib/
+  calculations.ts   mesin ringkasan bulanan (murni, teruji)
+  generate.ts       perencana item bulan baru (murni, teruji)
+  goals.ts          proyeksi target tabungan (murni, teruji)
+  terbilang.ts      angka ke kata dalam Bahasa Indonesia (murni, teruji)
+  month.ts          aritmetika bulan tanpa objek Date (murni, teruji)
+  queries/          akses Supabase, satu file per domain
+app/(app)/          dashboard · bulan ini · target · pengaturan
+supabase/migrations/
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Dokumen
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [`docs/superpowers/specs/2026-08-03-sangu-design.md`](docs/superpowers/specs/2026-08-03-sangu-design.md)
+  — spesifikasi, termasuk rumus perhitungan dan amandemennya. Tiap perubahan
+  rumus setelah pemakaian nyata tercatat di sana beserta alasannya.
+- [`docs/PROGRESS.md`](docs/PROGRESS.md) — status, keputusan desain, dan jebakan
+  yang sudah ditemukan.

@@ -1,6 +1,6 @@
 # Sangu — Progress & Handoff
 
-Last updated: 2026-08-03
+Last updated: 2026-08-04
 
 Companion to `docs/superpowers/plans/2026-08-03-sangu.md` (step checkboxes there
 are ticked through Task 11) and `docs/superpowers/specs/2026-08-03-sangu-design.md`.
@@ -22,15 +22,22 @@ are ticked through Task 11) and `docs/superpowers/specs/2026-08-03-sangu-design.
 | 11. Dashboard | ✅ done, verified in browser |
 | 12. Target (savings goals) page | ✅ code done, ⬜ **browser check pending** |
 
-All plan tasks are implemented. Checks at the last commit: `npm run build`
-passes, `npm run lint` reports no issues, `npm test` is 43 passing across 5
-files.
+All plan tasks are implemented, and the visual design, responsive, settings,
+robustness and calculation passes that followed are recorded below. Checks at
+the last commit: `npm run build` passes, `npm run lint` reports no issues,
+`npm test` is 68 passing across 6 files.
 
-**Outstanding:** Task 12 step 6 — the only thing left in the plan. Log in, make
-sure there is a savings goal with a target amount, generate the current month,
-mark its saving item paid in `/current`, then confirm `/goals` shows the
-accumulated total, the remaining amount, an estimated completion month, and the
-setoran line switched to "Sudah menabung". Nothing else is known to be missing.
+**The one thing never done: the app has never been opened by a logged-in user.**
+Every visual check in this repo's history was made against a throwaway harness
+with sample data, because the session that built it had no credentials. The
+calculation engine is exercised from several directions by tests and was
+reconciled against the real August figures in the database, but no save button,
+dialog or paid-toggle has been clicked for real. Task 12 step 6 is the formal
+name for the tail of this.
+
+Worth running once, in this order: change an amount in Bulan Ini, tick an item
+paid, add a manual expense and delete it, then open Target. Those four cover the
+write path end to end; everything after that is ordinary use.
 
 ## Visual design, 2026-08-04
 
