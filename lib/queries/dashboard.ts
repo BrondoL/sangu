@@ -1,8 +1,37 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { toIsoMonth } from '@/lib/month'
+import { shiftMonth, toIsoMonth } from '@/lib/month'
 import type { MonthlyCalcInput } from '@/lib/types'
+
+/**
+ * Total planned spend per month for the trailing window ending at `month`,
+ * including months with no period (as zero) so the line has no gaps.
+ */
+export async function getExpenseTrend(
+  month: string,
+  months = 6
+): Promise<{ month: string; total: number }[]> {
+  const supabase = await createClient()
+  const window = Array.from({ length: months }, (_, i) =>
+    toIsoMonth(shiftMonth(month, i - (months - 1)))
+  )
+
+  const { data, error } = await supabase
+    .from('monthly_periods')
+    .select('month, monthly_items(amount)')
+    .gte('month', window[0])
+    .lte('month', window[window.length - 1])
+  if (error) throw error
+
+  const totals = new Map(
+    (data ?? []).map((p) => [
+      p.month,
+      p.monthly_items.reduce((sum, i) => sum + i.amount, 0),
+    ])
+  )
+  return window.map((m) => ({ month: m, total: totals.get(m) ?? 0 }))
+}
 
 /**
  * Loads everything `calculateMonthlySummary` needs for one month and maps the
