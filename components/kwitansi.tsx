@@ -87,13 +87,36 @@ export function Amount({
   value,
   size = 'md',
   tone = 'default',
+  masked = false,
   className,
 }: {
   value: number | null
   size?: keyof typeof SIZE
   tone?: Tone
+  /** Stand in for the figure without hinting at its magnitude. */
+  masked?: boolean
   className?: string
 }) {
+  if (masked && value !== null) {
+    return (
+      <span
+        className={cn(
+          'amount text-muted-foreground select-none',
+          SIZE[size],
+          className
+        )}
+        // A fixed run of dots: one per digit would leak the order of magnitude,
+        // which is most of what the figure gives away.
+        aria-label="Nominal disembunyikan"
+      >
+        <span className="mr-[0.35em] align-baseline text-[0.62em] opacity-55">
+          Rp
+        </span>
+        ••••••
+      </span>
+    )
+  }
+
   if (value === null) {
     return (
       <span className={cn('amount text-muted-foreground', SIZE[size], className)}>

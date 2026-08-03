@@ -2,6 +2,7 @@ import { TriangleAlert } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Amount, Eyebrow } from '@/components/kwitansi'
 import { CopyAmount } from './copy-amount'
+import { SalaryStat } from './salary-stat'
 import { formatRupiah } from '@/lib/format'
 import { terbilangRupiah } from '@/lib/terbilang'
 import type { MonthlySummary } from '@/lib/types'
@@ -119,8 +120,7 @@ export function SummaryCards({
 
       <Card className="py-0">
         <div className="grid sm:grid-cols-3">
-          <Stat
-            label="Gaji aktual"
+          <SalaryStat
             value={actualSalary}
             hint={actualSalary === null ? 'Belum diisi di Bulan Ini' : undefined}
           />
