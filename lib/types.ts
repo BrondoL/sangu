@@ -54,3 +54,55 @@ export interface MonthlySummary {
   perCategory: CategoryTotal[]
   warnings: CalcWarning[]
 }
+
+export interface RecurringDef {
+  id: string
+  name: string
+  defaultAmount: number
+  accountId: string
+  paymentMethod: PaymentMethod
+}
+
+export interface InstallmentDef {
+  id: string
+  name: string
+  monthlyAmount: number
+  tenorMonths: number
+  startMonth: string // 'YYYY-MM-01'
+  accountId: string
+  paymentMethod: PaymentMethod
+}
+
+export interface SavingDef {
+  id: string
+  name: string
+  monthlyAmount: number
+  accountId: string
+}
+
+export interface PreviousItem {
+  sourceType: SourceType | null
+  sourceId: string | null
+  amount: number
+}
+
+export interface GenerateInput {
+  targetMonth: string // 'YYYY-MM-01'
+  recurringExpenses: RecurringDef[]
+  installments: InstallmentDef[]
+  savingsGoals: SavingDef[]
+  creditCardAccountIds: string[]
+  previousItems: PreviousItem[] | null
+  existingSourceIds: Set<string>       // recurring/installment/saving already in target month
+  existingCardBillAccountIds: Set<string>
+}
+
+export interface PlannedItem {
+  name: string
+  amount: number
+  accountId: string
+  category: Category
+  paymentMethod: PaymentMethod
+  sourceType: SourceType | null
+  sourceId: string | null
+}
