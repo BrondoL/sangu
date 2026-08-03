@@ -58,12 +58,29 @@ export function calculateMonthlySummary(input: MonthlyCalcInput): MonthlySummary
   const freeMoney =
     sufficiencyVsActual === null ? null : Math.max(0, sufficiencyVsActual)
 
+  /**
+   * What the salary receiver is already holding beyond its own expenses.
+   *
+   * Shortfall is clamped at zero, so an over-funded receiver is invisible to
+   * the rest of the maths — and the excess would sit idle while free money from
+   * the same month collects in the proxy. The receiver is the one account a
+   * transfer is leaving anyway, so sweeping it costs no extra action. That is
+   * what separates it from any other account in surplus, whose balance stays
+   * put precisely because moving it would be an unplanned transfer.
+   */
+  const receiverNeed = receiver
+    ? (perAccount.find((a) => a.accountId === receiver.id)?.need ?? 0)
+    : 0
+  const receiverSurplus = receiver
+    ? Math.max(0, balanceOf(receiver.id) - receiverNeed)
+    : 0
+
   // Needs both flags: without a proxy there is nowhere to send the money, and
   // without a receiver "non-receiver shortfall" would just be every shortfall.
   const transferToProxy =
     !proxy || !receiver || freeMoney === null
       ? null
-      : nonReceiverShortfall + freeMoney
+      : nonReceiverShortfall + freeMoney + receiverSurplus
 
   return {
     totalExpense,
@@ -71,6 +88,7 @@ export function calculateMonthlySummary(input: MonthlyCalcInput): MonthlySummary
     totalShortfall,
     sufficiencyVsBase,
     sufficiencyVsActual,
+    receiverSurplus,
     transferToProxy,
     unpaidTotal,
     perCategory,

@@ -95,6 +95,14 @@ export function SummaryCards({
               <p className="mt-1 text-sm leading-relaxed text-balance">
                 {terbilangRupiah(summary.transferToProxy)}
               </p>
+              {/* Without this the figure looks wrong: it exceeds the salary,
+                  because part of it was already sitting in the receiver. */}
+              {summary.receiverSurplus > 0 && (
+                <p className="text-muted-foreground mt-2 text-xs text-balance">
+                  Termasuk {formatRupiah(summary.receiverSurplus)} yang sudah ada
+                  di rekening penerima gaji dan tidak terpakai bulan ini.
+                </p>
+              )}
             </div>
           )}
         </CardContent>

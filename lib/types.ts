@@ -52,6 +52,7 @@ export interface MonthlySummary {
   totalShortfall: number
   sufficiencyVsBase: number          // baseSalary - totalShortfall
   sufficiencyVsActual: number | null // actualSalary - totalShortfall (null if no actualSalary)
+  receiverSurplus: number            // what the salary receiver holds beyond its own need
   transferToProxy: number | null     // null if no actualSalary, proxy, or receiver
   unpaidTotal: number
   perCategory: CategoryTotal[]

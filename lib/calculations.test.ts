@@ -52,8 +52,38 @@ describe('calculateMonthlySummary — normal month (spec example)', () => {
   it('computes transfer to proxy = non-receiver shortfalls + free money', () => {
     expect(s.transferToProxy).toBe(20_500_000) // (3M+4M+0) + 13.5M
   })
+  it('has no receiver surplus to sweep — BCA is short of its own expenses', () => {
+    expect(s.receiverSurplus).toBe(0)
+  })
   it('sums unpaid only', () => {
     expect(s.unpaidTotal).toBe(9_000_000) // 11M - 2M paid
+  })
+})
+
+describe('calculateMonthlySummary — receiver already holds more than it needs', () => {
+  // The spec's worked example has the receiver short of its own expenses, so it
+  // never exercises the other direction. When the receiver is already over-
+  // funded, that excess is free money sitting in the one account a transfer is
+  // leaving anyway — so it goes to the proxy with everything else.
+  const s = calculateMonthlySummary({
+    ...base,
+    balances: [
+      { accountId: 'bca', balance: 5_000_000 }, // needs 2M, so 3M spare
+      { accountId: 'jago', balance: 0 },
+      { accountId: 'mandiri', balance: 1_000_000 },
+      { accountId: 'bri', balance: 1_500_000 },
+    ],
+  })
+
+  it('reports the receiver surplus', () => {
+    expect(s.receiverSurplus).toBe(3_000_000)
+  })
+  it('sweeps the surplus into the transfer', () => {
+    // shortfalls 0 + 3M + 4M + 0 = 7M; free money 22M - 7M = 15M; spare 3M.
+    expect(s.transferToProxy).toBe(25_000_000)
+  })
+  it('leaves the receiver holding exactly its own need', () => {
+    expect(5_000_000 + 22_000_000 - s.transferToProxy!).toBe(2_000_000)
   })
 })
 

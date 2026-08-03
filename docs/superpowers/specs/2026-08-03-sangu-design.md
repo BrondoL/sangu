@@ -177,9 +177,32 @@ Nilai negatif berarti bulan itu tekor, dan besarannya langsung terlihat.
 
 **6. Transfer ke proxy**
 ```
-transfer = jumlah_kekurangan_rekening_non_penerima_gaji + max(0, sisa_gaji)
+kelebihan_penerima = max(0, saldo_penerima_gaji - kebutuhan_penerima_gaji)
+transfer = jumlah_kekurangan_rekening_non_penerima_gaji
+         + max(0, sisa_gaji)
+         + kelebihan_penerima
 ```
 Sisa gaji ikut dikirim ke proxy sebagai uang bebas, siap diteruskan ke rekening tabungan.
+
+> **Amendemen 2026-08-04 — kelebihan di rekening penerima gaji ikut disapu.**
+> Contoh perhitungan di bawah memakai penerima gaji yang saldonya *kurang* dari
+> kebutuhannya, sehingga arah sebaliknya tidak pernah teruji. Pada data asli
+> yang pertama dipakai, saldo BCA 3.785.093 melebihi kebutuhannya 1.505.534.
+> Karena kekurangan dibatasi nol, kelebihan 2.279.559 itu tidak terlihat sama
+> sekali oleh rumus: gajinya disapu bersih ke proxy, tapi uang yang sudah ada
+> di sana ditinggal menganggur — padahal sama-sama uang bebas.
+>
+> Ini berbeda dari aturan "saldo berlebih tidak mengurangi kebutuhan rekening
+> lain" di langkah 3. Aturan itu ada karena memindahkan saldo antar rekening
+> butuh transfer manual yang tidak direncanakan. Rekening penerima gaji adalah
+> satu-satunya pengecualian yang jujur: transfer dari sana **memang sudah pasti
+> dilakukan** bulan itu, jadi menambah nominalnya tidak menambah pekerjaan.
+>
+> Hasilnya rumus jadi konsisten — penerima gaji berakhir dengan tepat sejumlah
+> kebutuhannya, tidak lebih dan tidak kurang. Konsekuensinya angka transfer bisa
+> melampaui gaji, karena sebagiannya bukan berasal dari gaji bulan itu; kartu di
+> Dashboard menyebutkan bagian tersebut secara terpisah supaya tidak
+> membingungkan.
 
 ### Contoh Perhitungan
 
