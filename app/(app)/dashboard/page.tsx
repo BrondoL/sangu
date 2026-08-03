@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { MonthPicker } from '@/components/month-picker'
+import { Eyebrow, PageHeader } from '@/components/kwitansi'
 import { SummaryCards } from '@/components/dashboard/summary-cards'
 import { AccountTable } from '@/components/dashboard/account-table'
 import { SharePie } from '@/components/dashboard/share-pie'
@@ -37,44 +38,45 @@ export default async function DashboardPage({
   const names = Object.fromEntries(accounts.map((a) => [a.id, a.name]))
   const paid = summary.totalExpense - summary.unpaidTotal
   const paidRatio = summary.totalExpense > 0 ? paid / summary.totalExpense : 0
+  const paidPercent = Math.round(paidRatio * 100)
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
+    <div className="space-y-4">
+      <PageHeader title="Dashboard">
         <Suspense fallback={null}>
           <MonthPicker defaultMonth={month} />
         </Suspense>
-      </div>
+      </PageHeader>
 
       <SummaryCards summary={summary} actualSalary={input.actualSalary} />
 
+      <AccountTable perAccount={summary.perAccount} accounts={accounts} />
+
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Progres pembayaran</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-2.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <Eyebrow>Progres pembayaran</Eyebrow>
+            <span className="amount text-sm">{paidPercent}%</span>
+          </div>
           <div
-            className="bg-muted h-2 w-full overflow-hidden rounded-full"
+            className="bg-muted h-1.5 w-full overflow-hidden rounded-full"
             role="progressbar"
-            aria-valuenow={Math.round(paidRatio * 100)}
+            aria-label="Progres pembayaran"
+            aria-valuenow={paidPercent}
             aria-valuemin={0}
             aria-valuemax={100}
           >
             <div
-              className="h-full rounded-full"
-              style={{ width: `${paidRatio * 100}%`, background: 'var(--chart-1)' }}
+              className="bg-primary h-full rounded-full transition-[width] duration-500"
+              style={{ width: `${paidRatio * 100}%` }}
             />
           </div>
-          <p className="text-muted-foreground text-sm">
-            {formatRupiah(paid)} dari {formatRupiah(summary.totalExpense)} sudah dibayar
-            {' · '}
-            sisa {formatRupiah(summary.unpaidTotal)}
+          <p className="text-muted-foreground text-xs">
+            {formatRupiah(paid)} dari {formatRupiah(summary.totalExpense)} sudah
+            dibayar · sisa {formatRupiah(summary.unpaidTotal)}
           </p>
         </CardContent>
       </Card>
-
-      <AccountTable perAccount={summary.perAccount} names={names} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <SharePie

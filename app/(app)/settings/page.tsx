@@ -1,5 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/kwitansi'
 import { AccountsTab } from '@/components/settings/accounts-tab'
 import { RecurringTab } from '@/components/settings/recurring-tab'
 import { InstallmentsTab } from '@/components/settings/installments-tab'
@@ -26,15 +27,17 @@ export default async function SettingsPage() {
     ])
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Pengaturan</h1>
+    <div>
+      <PageHeader
+        title="Pengaturan"
+        lead="Definisi yang jarang berubah. Bulan berjalan menyalin dari sini."
+      >
         <form action={logout}>
           <Button type="submit" variant="outline" size="sm">
             Keluar
           </Button>
         </form>
-      </div>
+      </PageHeader>
 
       <Tabs defaultValue="accounts">
         <TabsList className="w-full">

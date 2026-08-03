@@ -22,23 +22,25 @@ export function MonthPicker({ defaultMonth }: { defaultMonth: string }) {
   }
 
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div className="border-border bg-card inline-flex items-center gap-0.5 rounded-lg border p-0.5">
       <Button
         variant="ghost"
-        size="icon"
+        size="icon-sm"
         aria-label="Bulan sebelumnya"
         onClick={() => go(-1)}
       >
-        <ChevronLeft className="size-5" />
+        <ChevronLeft className="size-4" />
       </Button>
-      <span className="text-base font-medium">{formatMonthLabel(month)}</span>
+      <span className="min-w-[8.75rem] text-center font-mono text-[0.8rem] font-medium tracking-[0.06em] uppercase">
+        {formatMonthLabel(month)}
+      </span>
       <Button
         variant="ghost"
-        size="icon"
+        size="icon-sm"
         aria-label="Bulan berikutnya"
         onClick={() => go(1)}
       >
-        <ChevronRight className="size-5" />
+        <ChevronRight className="size-4" />
       </Button>
     </div>
   )

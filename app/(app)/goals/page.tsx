@@ -1,11 +1,11 @@
 import { Card, CardContent } from '@/components/ui/card'
+import { Amount, Eyebrow, PageHeader } from '@/components/kwitansi'
 import { GoalCard } from '@/components/goals/goal-card'
 import { getGoalProgress } from '@/lib/queries/goals'
 import { getPeriod, getItems } from '@/lib/queries/periods'
 import { listAccounts } from '@/lib/queries/accounts'
 import { projectGoal } from '@/lib/goals'
 import { currentMonthParam, formatMonthLabel, toIsoMonth } from '@/lib/month'
-import { formatRupiah } from '@/lib/format'
 
 /**
  * Always the real current month: accumulation is cross-period, so a month
@@ -34,42 +34,41 @@ export default async function GoalsPage() {
   const totalMonthly = progress.reduce((s, p) => s + p.goal.monthly_amount, 0)
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Target</h1>
-        <p className="text-muted-foreground text-sm">
-          Checklist setoran untuk {formatMonthLabel(month)}.
-        </p>
-      </div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Target"
+        lead={`Checklist setoran untuk ${formatMonthLabel(month)}.`}
+      />
 
       {progress.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-center">
-            <p className="text-muted-foreground text-sm">
-              Belum ada target tabungan aktif. Tambahkan di Pengaturan → Target.
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground mx-auto max-w-xs text-sm text-balance">
+              Belum ada target tabungan aktif. Tambahkan satu di Pengaturan →
+              Target, lalu sinkronkan bulan ini.
             </p>
           </CardContent>
         </Card>
       ) : (
         <>
-          <Card>
-            <CardContent className="grid grid-cols-2 gap-4 py-4">
-              <div>
-                <p className="text-muted-foreground text-sm">Total terkumpul</p>
-                <p className="text-2xl font-semibold tabular-nums">
-                  {formatRupiah(totalAccumulated)}
-                </p>
+          <Card className="py-0">
+            <div className="grid sm:grid-cols-2">
+              <div className="border-rule px-4 py-3 not-last:border-b sm:not-last:border-r sm:not-last:border-b-0">
+                <Eyebrow>Total terkumpul</Eyebrow>
+                <div className="mt-1.5">
+                  <Amount value={totalAccumulated} size="lg" />
+                </div>
               </div>
-              <div>
-                <p className="text-muted-foreground text-sm">Setoran per bulan</p>
-                <p className="text-2xl font-semibold tabular-nums">
-                  {formatRupiah(totalMonthly)}
-                </p>
+              <div className="px-4 py-3">
+                <Eyebrow>Setoran per bulan</Eyebrow>
+                <div className="mt-1.5">
+                  <Amount value={totalMonthly} size="lg" />
+                </div>
               </div>
-            </CardContent>
+            </div>
           </Card>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid items-start gap-4 sm:grid-cols-2">
             {progress.map(({ goal, accumulated }) => (
               <GoalCard
                 key={goal.id}

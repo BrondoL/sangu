@@ -49,7 +49,14 @@ export function InlineRupiah({
       onKeyDown={(e) => {
         if (e.key === 'Enter') e.currentTarget.blur()
       }}
-      className={cn('text-right tabular-nums', className)}
+      // A ruled line to write the figure on, not a boxed field — a column of
+      // outlined boxes drowns out the amounts themselves. The focus ring is
+      // left intact so keyboard users still get an unmistakable target.
+      className={cn(
+        'amount h-8 rounded-none border-0 border-b bg-transparent px-1 text-right text-sm',
+        'hover:bg-muted/50 focus-visible:border-ring dark:bg-transparent',
+        className
+      )}
     />
   )
 }

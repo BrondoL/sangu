@@ -1,8 +1,9 @@
-import { CircleCheck, Circle, CircleAlert } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { CircleCheck, Circle, CircleDashed } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Amount, Eyebrow, MoneyRow } from '@/components/kwitansi'
 import { formatRupiah } from '@/lib/format'
 import { formatMonthLabel } from '@/lib/month'
+import { cn } from '@/lib/utils'
 import type { GoalProjection } from '@/lib/goals'
 import type { Tables } from '@/lib/database.types'
 
@@ -17,15 +18,6 @@ function formatDate(iso: string): string {
     dateStyle: 'long',
     timeZone: 'UTC',
   }).format(new Date(`${iso}T00:00:00Z`))
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4">
-      <span className="text-muted-foreground text-sm">{label}</span>
-      <span className="text-sm tabular-nums">{value}</span>
-    </div>
-  )
 }
 
 export function GoalCard({
@@ -49,36 +41,63 @@ export function GoalCard({
 }) {
   const { remaining, completionMonth, onTrack, progressRatio } = projection
   const target = goal.target_amount
-  const percent =
-    progressRatio === null ? null : Math.round(progressRatio * 100)
+  const percent = progressRatio === null ? null : Math.round(progressRatio * 100)
+
+  const status = savedThisMonth === null ? 'none' : savedThisMonth.isPaid ? 'paid' : 'due'
+  const STATUS = {
+    paid: {
+      Icon: CircleCheck,
+      className: 'text-surplus',
+      text: `Sudah menabung ${formatMonthLabel(month)}`,
+    },
+    due: {
+      Icon: Circle,
+      className: 'text-muted-foreground',
+      text: `Belum menabung ${formatMonthLabel(month)}`,
+    },
+    none: {
+      Icon: CircleDashed,
+      className: 'text-muted-foreground',
+      text: `Belum ada setoran ${formatMonthLabel(month)}`,
+    },
+  }[status]
 
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardContent className="flex h-full flex-col">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <CardTitle className="text-base">{goal.name}</CardTitle>
+          <div className="min-w-0">
+            <h2 className="leading-tight font-medium">{goal.name}</h2>
+            {/* Sentence case, not an eyebrow: this is content, and an uppercased
+                "RP" in the middle of it reads as shouting. */}
             <p className="text-muted-foreground mt-1 text-xs">
               {accountName} · {formatRupiah(goal.monthly_amount)}/bulan
             </p>
           </div>
-          {onTrack === null ? (
-            goal.target_amount === null && (
-              <Badge variant="outline">Tanpa target nominal</Badge>
-            )
-          ) : onTrack ? (
-            <Badge variant="secondary">Sesuai target</Badge>
-          ) : (
-            <Badge variant="destructive">Meleset dari target</Badge>
+          {onTrack !== null && (
+            <span
+              className={cn(
+                'eyebrow shrink-0 rounded-md px-2 py-1',
+                onTrack
+                  ? 'text-surplus bg-surplus/10'
+                  : 'text-destructive bg-destructive/10'
+              )}
+            >
+              {onTrack ? 'Sesuai target' : 'Meleset'}
+            </span>
           )}
         </div>
-      </CardHeader>
 
-      <CardContent className="space-y-4">
         {percent !== null && target !== null && (
-          <div className="space-y-1.5">
+          <div className="mt-4 space-y-1.5">
+            <div className="flex items-baseline justify-between">
+              <Amount value={accumulated} size="lg" />
+              <span className="amount text-muted-foreground text-xs">
+                {percent}% dari {target.toLocaleString('id-ID')}
+              </span>
+            </div>
             <div
-              className="bg-muted h-2 w-full overflow-hidden rounded-full"
+              className="bg-muted h-1.5 w-full overflow-hidden rounded-full"
               role="progressbar"
               aria-label={`Progres ${goal.name}`}
               aria-valuenow={percent}
@@ -86,68 +105,50 @@ export function GoalCard({
               aria-valuemax={100}
             >
               <div
-                className="h-full rounded-full"
-                style={{ width: `${percent}%`, background: 'var(--chart-1)' }}
+                className="bg-primary h-full rounded-full transition-[width] duration-500"
+                style={{ width: `${percent}%` }}
               />
             </div>
-            <p className="text-muted-foreground text-xs">
-              {percent}% terkumpul dari {formatRupiah(target)}
-            </p>
           </div>
         )}
 
-        <div className="space-y-1">
-          <Row label="Sudah terkumpul" value={formatRupiah(accumulated)} />
-          {remaining !== null && (
-            <Row label="Sisa" value={formatRupiah(remaining)} />
+        <div className="mt-4 flex-1">
+          {/* An open-ended goal has no bar and no estimate, so the total it has
+              reached is the headline instead. */}
+          {target === null && (
+            <div className="mb-2">
+              <Eyebrow>Sudah terkumpul</Eyebrow>
+              <div className="mt-1">
+                <Amount value={accumulated} size="lg" />
+              </div>
+            </div>
           )}
-          {/* No target amount or no monthly deposit means no arrival date to
-              estimate — the spec asks for the row to be absent, not empty. */}
+          {remaining !== null && <MoneyRow label="Sisa" value={remaining} />}
           {completionMonth && (
-            <Row
-              label="Perkiraan tercapai"
-              value={formatMonthLabel(completionMonth)}
-            />
+            <div className="flex items-baseline justify-between gap-4 py-1.5">
+              <span className="text-sm">Perkiraan tercapai</span>
+              <span className="amount text-sm">
+                {formatMonthLabel(completionMonth)}
+              </span>
+            </div>
           )}
           {goal.target_date && (
-            <Row label="Target tanggal" value={formatDate(goal.target_date)} />
+            <div className="flex items-baseline justify-between gap-4 py-1.5">
+              <span className="text-sm">Target tanggal</span>
+              <span className="text-sm">{formatDate(goal.target_date)}</span>
+            </div>
           )}
         </div>
 
-        <div className="flex items-center gap-2 border-t pt-3 text-sm">
-          {savedThisMonth === null ? (
-            <>
-              <CircleAlert
-                className="text-muted-foreground size-4 shrink-0"
-                aria-hidden
-              />
-              <span className="text-muted-foreground">
-                Belum ada setoran {formatMonthLabel(month)} — buat di Bulan Ini.
-              </span>
-            </>
-          ) : savedThisMonth.isPaid ? (
-            <>
-              <CircleCheck
-                className="size-4 shrink-0 text-[#006300] dark:text-[#0ca30c]"
-                aria-hidden
-              />
-              <span>
-                Sudah menabung {formatMonthLabel(month)} ·{' '}
-                <span className="tabular-nums">
-                  {formatRupiah(savedThisMonth.amount)}
-                </span>
-              </span>
-            </>
-          ) : (
-            <>
-              <Circle className="text-muted-foreground size-4 shrink-0" aria-hidden />
-              <span className="text-muted-foreground">
-                Belum menabung {formatMonthLabel(month)} ·{' '}
-                <span className="tabular-nums">
-                  {formatRupiah(savedThisMonth.amount)}
-                </span>
-              </span>
-            </>
+        <div className="border-rule mt-3 flex items-center gap-2 border-t pt-3 text-sm">
+          <STATUS.Icon className={cn('size-4 shrink-0', STATUS.className)} aria-hidden />
+          <span className={status === 'paid' ? '' : 'text-muted-foreground'}>
+            {STATUS.text}
+          </span>
+          {savedThisMonth && (
+            <span className="amount text-muted-foreground ml-auto text-xs">
+              {formatRupiah(savedThisMonth.amount)}
+            </span>
           )}
         </div>
       </CardContent>

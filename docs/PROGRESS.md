@@ -32,6 +32,46 @@ mark its saving item paid in `/current`, then confirm `/goals` shows the
 accumulated total, the remaining amount, an estimated completion month, and the
 setoran line switched to "Sudah menabung". Nothing else is known to be missing.
 
+## Visual design, 2026-08-04
+
+The default shadcn neutral theme was replaced with a deliberate one. Direction:
+**kwitansi** — the app is a monthly financial document, not a dashboard.
+
+- **Palette** from the two dyes on a batik cloth: nila (indigo) as the ground,
+  kunyit (turmeric) as the single accent, gading (ivory) as the undyed cotton.
+  Dark mode was designed first and is the ground the palette was built on; light
+  is a warm paper. Every ratio in `app/globals.css` is measured, and the comment
+  next to each token records it. Kunyit is the action colour in both modes and
+  always carries nila text — white on turmeric never clears 4.5:1.
+- **Type**: Schibsted Grotesk for voice, IBM Plex Mono for every rupiah figure
+  and every uppercase label. Amounts are mono so digits stack down a column.
+- **Signature**: the `Terbilang` line under the transfer figure, the way a
+  kwitansi, cheque and bank slip all carry it. It is not decoration — an
+  eight-digit rupiah figure is easy to misread by a factor of ten, and reading
+  the words back is the check against that. `lib/terbilang.ts` is pure and
+  tested, like the rest of `lib/`.
+- **Charts** were re-stepped for the new surfaces and both sets re-validated
+  with the dataviz skill's script: lightness band, chroma floor, CVD separation,
+  normal-vision floor and 3:1 contrast all pass in both modes. Tritan separation
+  sits near the floor, so slices stay direct-labelled with a table of the same
+  numbers on the page.
+- **Theme switching** now works: `next-themes` was already a dependency but was
+  never wired up. Follows the system by default, with a toggle in the header.
+  Which icon shows is decided in CSS off the `.dark` class rather than in React,
+  so there is no hydration mismatch and no mounted flag.
+
+Conventions worth keeping: uppercase eyebrows are for labels and column heads
+only, never for content — an account name or an amount inside a sentence stays
+in sentence case. Money inputs are a ruled line, not a boxed field.
+
+**What was reviewed on screen:** dark mode across the dashboard, target cards and
+the Bulan Ini list; light mode on the dashboard. Headless Chromium began
+auto-darkening partway through, so light mode was not re-shot after the last
+round of changes — its contrast is validated numerically, not visually. Recharts
+does not render under headless screenshotting, so the pie and line charts were
+not seen; their structure is unchanged from the version verified in a browser
+earlier, only the header treatment differs.
+
 ## Spec audit, 2026-08-03
 
 The whole codebase was read against the spec after Task 12. Data model,

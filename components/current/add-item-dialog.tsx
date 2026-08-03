@@ -20,7 +20,7 @@ export function AddItemDialog({
       title="Tambah pengeluaran"
       action={addItemAction}
       trigger={
-        <Button size="sm" variant="outline">
+        <Button variant="outline">
           <Plus className="size-4" /> Tambah pengeluaran
         </Button>
       }

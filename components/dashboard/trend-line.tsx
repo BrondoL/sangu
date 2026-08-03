@@ -9,9 +9,12 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
+import { SectionHead } from '@/components/kwitansi'
 import { formatRupiah } from '@/lib/format'
 import { formatMonthLabel } from '@/lib/month'
+
+const MONO = 'var(--font-plex-mono), ui-monospace, monospace'
 
 export function TrendLine({ data }: { data: { month: string; total: number }[] }) {
   const points = data.map((d) => ({
@@ -22,25 +25,25 @@ export function TrendLine({ data }: { data: { month: string; total: number }[] }
 
   return (
     <Card>
-      <CardHeader>
+      <CardContent>
         {/* Single series — the title names it, so no legend box is needed. */}
-        <CardTitle className="text-base">Tren total pengeluaran</CardTitle>
-      </CardHeader>
-      <CardContent className="h-56">
+        <SectionHead title="Tren total pengeluaran" aside="6 bulan terakhir" />
+        <div className="h-52">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+          <LineChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="label"
               tickLine={false}
               axisLine={{ stroke: 'var(--border)' }}
-              tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+              tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: MONO }}
+              dy={4}
             />
             <YAxis
-              width={64}
+              width={52}
               tickLine={false}
               axisLine={false}
-              tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
+              tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: MONO }}
               tickFormatter={(v: number) => (v === 0 ? '0' : `${Math.round(v / 1_000_000)} jt`)}
             />
             <Tooltip
@@ -66,6 +69,7 @@ export function TrendLine({ data }: { data: { month: string; total: number }[] }
             />
           </LineChart>
         </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   )

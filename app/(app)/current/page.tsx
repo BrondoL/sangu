@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { MonthPicker } from '@/components/month-picker'
+import { Eyebrow, PageHeader } from '@/components/kwitansi'
 import { TopPanel } from '@/components/current/top-panel'
 import { ItemGroup } from '@/components/current/item-group'
 import { AddItemDialog } from '@/components/current/add-item-dialog'
@@ -30,23 +31,28 @@ export default async function CurrentPage({
   const activeAccounts = accounts.filter((a) => a.is_active)
 
   const header = (
-    <div className="space-y-2">
-      <h1 className="text-2xl font-semibold">Bulan Ini</h1>
+    <PageHeader title="Bulan Ini">
       <Suspense fallback={null}>
         <MonthPicker defaultMonth={month} />
       </Suspense>
-    </div>
+    </PageHeader>
   )
 
   if (!period) {
     return (
-      <div className="space-y-6">
+      <div>
         {header}
         <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
-            <p className="text-muted-foreground text-sm">
-              Belum ada data untuk {formatMonthLabel(month)}.
-            </p>
+          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium">
+                {formatMonthLabel(month)} belum dibuka
+              </p>
+              <p className="text-muted-foreground max-w-xs text-sm text-balance">
+                Menyalin definisi yang masih aktif jadi daftar bulan ini. Nominal
+                mengikuti bulan lalu bila ada.
+              </p>
+            </div>
             <GenerateButton month={month} />
           </CardContent>
         </Card>
@@ -61,7 +67,7 @@ export default async function CurrentPage({
   const total = items.reduce((sum, i) => sum + i.amount, 0)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {header}
 
       <TopPanel
@@ -72,10 +78,12 @@ export default async function CurrentPage({
         balances={balances}
       />
 
-      <div className="flex items-center justify-between">
-        <span className="text-sm">
-          Total kebutuhan{' '}
-          <strong className="tabular-nums">{formatRupiah(total)}</strong>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span>
+          <Eyebrow>Total kebutuhan</Eyebrow>
+          <span className="amount ml-2.5 text-sm font-medium">
+            {formatRupiah(total)}
+          </span>
         </span>
         <div className="flex gap-2">
           <AddItemDialog periodId={period.id} accounts={activeAccounts} />
@@ -84,10 +92,14 @@ export default async function CurrentPage({
       </div>
 
       {items.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          Belum ada item. Tambah manual, atau lengkapi definisi di Pengaturan lalu
-          tekan &ldquo;Sinkron definisi&rdquo;.
-        </p>
+        <Card>
+          <CardContent className="py-10 text-center">
+            <p className="text-muted-foreground mx-auto max-w-sm text-sm text-balance">
+              Belum ada item. Tambah satu secara manual, atau lengkapi definisi di
+              Pengaturan lalu tekan &ldquo;Sinkron definisi&rdquo;.
+            </p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-4">
           {GROUPS.map(({ category, title }) => (

@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { SectionHead } from '@/components/kwitansi'
 import { InlineRupiah } from './inline-rupiah'
 import {
   setActualSalaryAction,
@@ -34,39 +35,44 @@ export function TopPanel({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Gaji &amp; saldo</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-1">
-          <Label>Gaji aktual bulan ini</Label>
+      <CardContent className="space-y-5">
+        {/* The two figures you fill in before anything else each month. */}
+        <div>
+          <SectionHead title="Gaji aktual bulan ini" />
           <InlineRupiah
             label="Gaji aktual"
             value={actualSalary ?? 0}
             save={(amount) => setActualSalaryAction(periodId, amount)}
+            className="w-full text-lg"
           />
         </div>
 
-        <div className="space-y-2">
-          <Label>Saldo awal tiap rekening</Label>
-          {accounts.map((account) => (
-            <div key={account.id} className="flex items-center gap-3">
-              <span className="flex-1 text-sm">{account.name}</span>
-              <InlineRupiah
-                label={`Saldo ${account.name}`}
-                value={balanceOf(account.id)}
-                save={(amount) => setBalanceAction(periodId, account.id, amount)}
-                className="w-40"
-              />
-            </div>
-          ))}
+        <div>
+          <SectionHead title="Saldo awal tiap rekening" />
+          <div className="divide-border/60 -my-1 divide-y">
+            {accounts.map((account) => (
+              <div key={account.id} className="flex items-center gap-3 py-2">
+                <span className="flex-1 truncate text-sm">{account.name}</span>
+                <InlineRupiah
+                  label={`Saldo ${account.name}`}
+                  value={balanceOf(account.id)}
+                  save={(amount) => setBalanceAction(periodId, account.id, amount)}
+                  className="w-32 shrink-0 sm:w-40"
+                />
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="space-y-1">
-          <Label htmlFor="note">Catatan</Label>
+        <div>
+          <Label htmlFor="note" className="sr-only">
+            Catatan
+          </Label>
+          <SectionHead title="Catatan" />
           <Textarea
             id="note"
             rows={2}
+            placeholder="Kejadian tak biasa bulan ini"
             disabled={pending}
             value={noteValue}
             onChange={(e) => setNoteValue(e.target.value)}

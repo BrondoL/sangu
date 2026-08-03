@@ -1,45 +1,61 @@
-import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { Toaster } from "@/components/ui/sonner";
-import "./globals.css";
+import type { Metadata, Viewport } from 'next'
+import { Schibsted_Grotesk, IBM_Plex_Mono } from 'next/font/google'
+import { ThemeProvider } from '@/components/theme-provider'
+import { Toaster } from '@/components/ui/sonner'
+import './globals.css'
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+// Schibsted Grotesk carries the voice: sturdy, slightly editorial, and not the
+// grotesk every other dashboard reaches for.
+const schibsted = Schibsted_Grotesk({
+  variable: '--font-schibsted',
+  subsets: ['latin'],
+  display: 'swap',
+})
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// Every rupiah figure and every eyebrow label is set in Plex Mono, so amounts
+// line up down a column and small labels read like a printed form.
+const plexMono = IBM_Plex_Mono({
+  variable: '--font-plex-mono',
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
-  title: "Sangu",
-  description: "Perencana anggaran bulanan",
-  manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "Sangu" },
-};
+  title: 'Sangu',
+  description: 'Perencana anggaran bulanan',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'Sangu' },
+}
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0a",
-};
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#faf8f3' },
+    { media: '(prefers-color-scheme: dark)', color: '#0c1626' },
+  ],
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.ReactNode
 }>) {
   return (
+    // suppressHydrationWarning: next-themes writes the theme class onto <html>
+    // before paint, so the server markup never matches on the first pass.
     <html
       lang="id"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${schibsted.variable} ${plexMono.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col">
-        {children}
-        {/* richColors gives error/success toasts their red/green treatment;
-            without it sonner renders every type in the neutral popover style. */}
-        <Toaster richColors />
+      <body className="flex min-h-full flex-col">
+        <ThemeProvider>
+          {children}
+          {/* richColors gives error/success toasts their red/green treatment;
+              without it sonner renders every type in the neutral popover style. */}
+          <Toaster richColors />
+        </ThemeProvider>
       </body>
     </html>
-  );
+  )
 }

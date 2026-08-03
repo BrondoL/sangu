@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Checkbox } from '@/components/ui/checkbox'
 import { InlineRupiah } from './inline-rupiah'
 import { DeleteButton } from '@/components/delete-button'
+import { cn } from '@/lib/utils'
 import {
   updateItemAmountAction,
   toggleItemPaidAction,
@@ -22,7 +23,7 @@ export function ItemRow({
   const [pending, startTransition] = useTransition()
 
   return (
-    <div className="flex items-center gap-3 py-2">
+    <div className="flex items-center gap-3 py-2.5">
       <Checkbox
         aria-label={`Tandai ${item.name} sudah dibayar`}
         checked={item.is_paid}
@@ -37,12 +38,15 @@ export function ItemRow({
 
       <div className="min-w-0 flex-1">
         <p
-          className={
-            item.is_paid ? 'text-muted-foreground truncate line-through' : 'truncate'
-          }
+          className={cn(
+            'truncate text-sm leading-tight',
+            item.is_paid && 'text-muted-foreground line-through'
+          )}
         >
           {item.name}
         </p>
+        {/* An account name is content, so it stays in sentence case — only
+            labels and column heads wear the uppercase eyebrow. */}
         <p className="text-muted-foreground text-xs">
           {accountName}
           {item.payment_method === 'credit' && ' · kartu kredit'}
@@ -53,7 +57,7 @@ export function ItemRow({
         label={`Nominal ${item.name}`}
         value={item.amount}
         save={(amount) => updateItemAmountAction(item.id, amount)}
-        className="w-36"
+        className="w-32 shrink-0 sm:w-36"
       />
 
       {/* Only manual rows are removable; generated ones come back next month. */}

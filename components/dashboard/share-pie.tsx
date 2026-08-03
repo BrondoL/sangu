@@ -1,7 +1,8 @@
 'use client'
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
+import { SectionHead } from '@/components/kwitansi'
 import { formatRupiah } from '@/lib/format'
 
 export type Share = { name: string; value: number }
@@ -23,10 +24,8 @@ export function SharePie({ title, data }: { title: string; data: Share[] }) {
   if (slices.length === 0) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{title}</CardTitle>
-        </CardHeader>
         <CardContent>
+          <SectionHead title={title} />
           <p className="text-muted-foreground text-sm">Belum ada data.</p>
         </CardContent>
       </Card>
@@ -35,59 +34,61 @@ export function SharePie({ title, data }: { title: string; data: Share[] }) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col items-center gap-4 sm:flex-row">
-        <div className="h-40 w-40 shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={slices}
-                dataKey="value"
-                nameKey="name"
-                innerRadius={38}
-                outerRadius={70}
-                // 2px surface gap so adjacent fills never touch.
-                stroke="var(--card)"
-                strokeWidth={2}
-                isAnimationActive={false}
-              >
-                {slices.map((slice, index) => (
-                  <Cell key={slice.name} fill={SLOTS[index % SLOTS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value) => formatRupiah(Number(value))}
-                contentStyle={{
-                  background: 'var(--popover)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius)',
-                  color: 'var(--popover-foreground)',
-                  fontSize: 12,
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+      <CardContent>
+        <SectionHead title={title} />
+        <div className="flex flex-col items-center gap-5 sm:flex-row">
+          <div className="size-36 shrink-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={slices}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={36}
+                  outerRadius={68}
+                  // 2px surface gap so adjacent fills never touch.
+                  stroke="var(--card)"
+                  strokeWidth={2}
+                  isAnimationActive={false}
+                >
+                  {slices.map((slice, index) => (
+                    <Cell key={slice.name} fill={SLOTS[index % SLOTS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value) => formatRupiah(Number(value))}
+                  contentStyle={{
+                    background: 'var(--popover)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)',
+                    color: 'var(--popover-foreground)',
+                    fontSize: 12,
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
 
-        {/* Legend doubles as the direct labels: identity is never colour-alone. */}
-        <ul className="w-full space-y-1.5 text-sm">
-          {slices.map((slice, index) => (
-            <li key={slice.name} className="flex items-center gap-2">
-              <span
-                aria-hidden
-                className="size-2.5 shrink-0 rounded-[2px]"
-                style={{ background: SLOTS[index % SLOTS.length] }}
-              />
-              <span className="flex-1 truncate">{slice.name}</span>
-              <span className="tabular-nums">{formatRupiah(slice.value)}</span>
-              <span className="text-muted-foreground w-10 text-right tabular-nums">
-                {Math.round((slice.value / total) * 100)}%
-              </span>
-            </li>
-          ))}
-        </ul>
+          {/* The legend doubles as the direct labels: identity is never colour-alone. */}
+          <ul className="w-full space-y-2 text-sm">
+            {slices.map((slice, index) => (
+              <li key={slice.name} className="flex items-center gap-2.5">
+                <span
+                  aria-hidden
+                  className="size-2.5 shrink-0 rounded-[2px]"
+                  style={{ background: SLOTS[index % SLOTS.length] }}
+                />
+                <span className="flex-1 truncate">{slice.name}</span>
+                <span className="amount text-[0.8rem]">
+                  {slice.value.toLocaleString('id-ID')}
+                </span>
+                <span className="amount text-muted-foreground w-10 text-right text-xs">
+                  {Math.round((slice.value / total) * 100)}%
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </CardContent>
     </Card>
   )
