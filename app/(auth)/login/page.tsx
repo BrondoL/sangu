@@ -1,8 +1,8 @@
 import { login } from '@/app/auth/actions'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { SubmitButton } from '@/components/submit-button'
 import { Eyebrow } from '@/components/kwitansi'
 import { currentMonthParam, formatMonthLabel } from '@/lib/month'
 
@@ -73,9 +73,9 @@ export default async function LoginPage({
               />
             </div>
 
-            <Button type="submit" size="lg" className="w-full">
+            <SubmitButton size="lg" className="w-full" pendingLabel="Memeriksa…">
               Masuk
-            </Button>
+            </SubmitButton>
           </form>
 
           {/* The period this document covers, stamped where a form stamps it. */}

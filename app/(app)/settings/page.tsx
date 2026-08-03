@@ -1,6 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/kwitansi'
+import { SubmitButton } from '@/components/submit-button'
 import { AccountsTab } from '@/components/settings/accounts-tab'
 import { RecurringTab } from '@/components/settings/recurring-tab'
 import { InstallmentsTab } from '@/components/settings/installments-tab'
@@ -39,9 +39,9 @@ export default async function SettingsPage() {
         lead="Definisi yang jarang berubah. Bulan berjalan menyalin dari sini."
       >
         <form action={logout}>
-          <Button type="submit" variant="outline" size="sm">
+          <SubmitButton variant="outline" size="sm" pendingLabel="Keluar…">
             Keluar
-          </Button>
+          </SubmitButton>
         </form>
       </PageHeader>
 
