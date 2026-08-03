@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { shiftMonth, toIsoMonth, toMonthParam, formatMonthLabel } from './month'
+import {
+  shiftMonth,
+  toIsoMonth,
+  toMonthParam,
+  formatMonthLabel,
+  currentMonthParam,
+} from './month'
 
 describe('shiftMonth', () => {
   it('moves forward within a year', () => {
@@ -25,6 +31,16 @@ describe('toIsoMonth / toMonthParam', () => {
   })
   it('truncates an ISO date to a month param', () => {
     expect(toMonthParam('2026-08-01')).toBe('2026-08')
+  })
+})
+
+describe('currentMonthParam', () => {
+  it('uses WIB, not UTC, at the month boundary', () => {
+    // 2026-07-31 18:00 UTC is already 2026-08-01 01:00 in Jakarta.
+    expect(currentMonthParam(new Date('2026-07-31T18:00:00Z'))).toBe('2026-08')
+  })
+  it('stays in the current month mid-month', () => {
+    expect(currentMonthParam(new Date('2026-08-15T12:00:00Z'))).toBe('2026-08')
   })
 })
 

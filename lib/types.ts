@@ -1,3 +1,6 @@
+/** Result of a form server action, consumed by `useActionState`. */
+export type ActionState = { ok: true } | { ok: false; message: string } | null
+
 export type Category = 'expense' | 'installment' | 'saving' | 'card_bill'
 export type PaymentMethod = 'debit' | 'credit'
 export type SourceType = 'recurring' | 'installment' | 'saving'

@@ -41,6 +41,21 @@ export function shiftMonth(month: string, delta: number): string {
   return `${year}-${String(monthNo).padStart(2, '0')}`
 }
 
+/**
+ * The month "now" belongs to, in WIB — not the server's timezone, which on a
+ * hosted deployment is usually UTC and would flip a day early.
+ */
+export function currentMonthParam(now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(now)
+  const year = parts.find((p) => p.type === 'year')!.value
+  const month = parts.find((p) => p.type === 'month')!.value
+  return `${year}-${month}`
+}
+
 export function formatMonthLabel(month: string): string {
   const [y, m] = parts(month)
   return `${MONTH_NAMES[m - 1]} ${y}`
