@@ -110,9 +110,19 @@ export default async function SpendingPage({
 
       <Card>
         <CardContent className="space-y-2.5">
-          <div className="flex items-baseline justify-between gap-3">
-            <Eyebrow>Catatan bulan ini</Eyebrow>
+          {/* Named for the month on screen, not "bulan ini", which is a lie
+              whenever the picker is on a past month. And both figures are
+              labelled: the section lists every row, so an unlabelled
+              unattached total sitting beside that heading reads as the
+              month's total at a glance. */}
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <Eyebrow>Catatan {formatMonthLabel(month)}</Eyebrow>
             <span className="text-muted-foreground text-xs">
+              total{' '}
+              <span className="amount text-foreground text-sm">
+                {formatRupiah(summary.totalSpent)}
+              </span>
+              <span className="px-1.5">·</span>
               tak terduga{' '}
               <span className="amount text-foreground text-sm">
                 {formatRupiah(summary.unattachedTotal)}
@@ -122,7 +132,7 @@ export default async function SpendingPage({
 
           {spending.length === 0 ? (
             <p className="text-muted-foreground text-xs">
-              Belum ada pengeluaran bulan ini.
+              Belum ada pengeluaran di {formatMonthLabel(month)}.
             </p>
           ) : (
             <ul className="divide-border divide-y">
