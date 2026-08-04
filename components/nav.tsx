@@ -72,7 +72,7 @@ export function BottomNav() {
 }
 
 /**
- * The same four destinations as a row in the header. A bottom tab bar stranded
+ * The same five destinations as a row in the header. A bottom tab bar stranded
  * across a 1440px monitor reads as a phone app that was never finished.
  */
 export function HeaderNav() {

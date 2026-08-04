@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useRef } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { RupiahInput } from '@/components/rupiah-input'
 import { SubmitButton } from '@/components/submit-button'
@@ -23,6 +23,20 @@ export function CaptureForm({
   const [state, formAction] = useActionState(action, null)
   const formRef = useRef<HTMLFormElement>(null)
 
+  // RupiahInput keeps its amount in React state, which a native form.reset()
+  // cannot touch. Bumping this key remounts it, which is how FormDialog clears
+  // the same component elsewhere in this codebase. Bumped during render, using
+  // React's documented "storing information from previous renders" pattern
+  // (state compared against state, no refs), since this repo's lint config
+  // forbids both a setState call inside an effect body and a ref read/write
+  // during render.
+  const [entryKey, setEntryKey] = useState(0)
+  const [handledState, setHandledState] = useState(state)
+  if (state !== handledState) {
+    setHandledState(state)
+    if (state?.ok) setEntryKey((n) => n + 1)
+  }
+
   // Clearing on success keeps the form ready for the next entry — this is a
   // thing done several times a day, so it must not need a reload between.
   useEffect(() => {
@@ -40,7 +54,7 @@ export function CaptureForm({
         <form ref={formRef} action={formAction} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
           <div className="space-y-1.5">
             <Label htmlFor="amount">Nominal</Label>
-            <RupiahInput name="amount" id="amount" required />
+            <RupiahInput key={entryKey} name="amount" id="amount" required />
           </div>
 
           <div className="space-y-1.5">
