@@ -41,9 +41,11 @@ The feature reads two existing tables and never writes them:
 "apply this adjustment" button writes `recurring_expenses.default_amount`. That
 is the entire point of the feature — an observation that cannot change anything
 is just a chart. It is a single-column update through a new server action; it
-does not touch the planner's code. If that is unwanted, the fallback is to show
-the suggested figure and link to Pengaturan, and the feature still works. **This
-is an open decision — see Open questions.**
+does not touch the planner's code.
+
+The write is behind a confirmation dialog showing the old and new figure,
+following the `AlertDialog` pattern already in `components/delete-button.tsx`.
+Nothing in this feature changes a budget without an explicit second tap.
 
 ## Which budgets get tracked
 
@@ -125,10 +127,11 @@ Route `app/(app)/spending/`, nav label **Belanja**, fifth tab.
 
 **Capture.** A single always-visible row at the top of the page: amount, budget
 (a select of tracked budgets plus "Tak terduga"), date defaulting to today in
-`Asia/Jakarta`, optional note. Submitting keeps the form in place and focused
-for the next entry. This is the whole capture surface — no separate screen, no
-modal, because a modal is one tap of friction on a thing done several times a
-day.
+`Asia/Jakarta`, optional note. The note is free text with a datalist of notes
+already used, so reuse is easier than retyping. Submitting keeps the form in
+place and focused for the next entry. This is the whole capture surface — no
+separate screen, no modal, because a modal is one tap of friction on a thing
+done several times a day.
 
 **The month.** Below it, one row per tracked budget: name, budget, spent,
 remaining or over, and a bar. Then an untracked section listing individual
@@ -150,8 +153,11 @@ Tak terduga                       167.000
 A month picker, matching the dashboard's. Each spending row can be edited or
 deleted.
 
-**Choosing what to track** lives in Pengaturan as a new tab, or inline on this
-page — see Open questions.
+**Choosing what to track** is a new **Dilacak** tab in Pengaturan, listing the
+active recurring expenses with a toggle each. A separate tab rather than a
+toggle inside the existing Rutin tab: the toggle reads better, but the tab
+leaves every existing component untouched and lets the whole feature be removed
+in one piece. Cost: five tabs is tight on a phone.
 
 ## Stage 2 — across months, and the adjustment
 
@@ -175,11 +181,15 @@ Months with no snapshot are shown as gaps, never as zero. A month you forgot to
 record is not a month you spent nothing, and the difference has to survive on
 screen — this is the failure mode most likely to make the whole feature lie.
 
-**New budgets.** Unattached spending is grouped by note text across the window.
-A note that recurs in three or more months with a meaningful total is surfaced
-as "this looks like a budget you do not have yet", with the total per month.
-That is the second half of the goal: not just adjusting budgets, but noticing
-missing ones.
+**New budgets.** Unattached spending is grouped by note text across the window,
+matched case-insensitively and with surrounding whitespace ignored. A note that
+recurs in three or more months with a meaningful total is surfaced as "this
+looks like a budget you do not have yet", with the total per month. That is the
+second half of the goal: not just adjusting budgets, but noticing missing ones.
+
+The grouping's honest limit: "laundry" and "Laundry" merge, "laundry" and "cuci
+baju" do not. The note field's suggestions (below) are what actually make this
+work; normalisation only cleans up the edges.
 
 ## Pure functions
 
@@ -224,18 +234,18 @@ gap-versus-zero distinction and each verdict boundary. The query layer is not
 unit-tested, matching the existing repo (no query tests exist today); it is
 checked by driving the page.
 
-## Open questions
+## Decisions taken
 
-1. **The adjustment button** — does stage 2 write `recurring_expenses.default_amount`
-   directly, or only display the suggestion and link to Pengaturan? Writing it
-   closes the loop and is the reason the feature exists; not writing it keeps
-   the isolation promise absolute.
-2. **Where tracking is chosen** — a new tab in Pengaturan, next to the existing
-   Recurring tab, or inline on the Belanja page itself.
-3. **Note field** — free text, or a remembered list of previous notes to tap.
-   Free text is simpler; a remembered list makes the "recurring note" detection
-   in stage 2 far more reliable, because "laundry", "Laundry" and "cuci baju"
-   will not group themselves.
+1. **The adjustment button writes `default_amount` directly**, behind a
+   confirmation dialog that shows the old and new figure. An observation that
+   cannot change anything is just a chart.
+2. **Tracking is chosen in a new Dilacak tab in Pengaturan**, keeping every
+   existing component untouched.
+3. **The note field is free text with suggestions from notes already used.** A
+   pick-from-previous list alone is impossible — on day one it is empty, so the
+   list has to grow from free text in the first place. The suggestions exist to
+   make reuse the path of least resistance, which is what makes stage 2's
+   grouping work at all.
 
 ## Not in this spec
 
