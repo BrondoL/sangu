@@ -2,7 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { toIsoMonth, toMonthParam, shiftMonth } from '@/lib/month'
+import {
+  toIsoMonth,
+  toMonthParam,
+  shiftMonth,
+  currentMonthParam,
+} from '@/lib/month'
 
 function revalidateSpending() {
   revalidatePath('/spending')
@@ -55,11 +60,16 @@ export async function ensureBudgetSnapshots(month: string) {
   const supabase = await createClient()
   const iso = toIsoMonth(month)
 
-  const [budgets, { data: existing, error }] = await Promise.all([
+  const [allTracked, { data: existing, error }] = await Promise.all([
     listTrackedBudgets(),
     supabase.from('budget_months').select('recurring_expense_id').eq('month', iso),
   ])
   if (error) throw error
+
+  // A retired budget is not running, so it has no amount that applies to this
+  // month. Snapshotting it anyway would add a fresh zero-spend month every
+  // month forever, and those months are exactly what suggestAdjustment reads.
+  const budgets = allTracked.filter((b) => b.isActive)
 
   const have = new Set((existing ?? []).map((e) => e.recurring_expense_id))
   const missing = budgets.filter((b) => !have.has(b.id))
@@ -163,6 +173,25 @@ export async function setBudgetAmount(recurringExpenseId: string, amount: number
     .update({ default_amount: amount })
     .eq('id', recurringExpenseId)
   if (error) throw error
+
+  // The current month's snapshot follows the definition, and nothing else does.
+  // This month is still being lived, so the budget that applies to it is the
+  // one just chosen; leaving the snapshot behind makes Belanja show the old
+  // figure and leaves Riwayat comparing the new suggestion against the number
+  // it was meant to replace, so the same row keeps offering the change that was
+  // already accepted. Past months are history: they record what the budget
+  // actually was then, and moving them would destroy the evidence the change
+  // was made on. Upsert, because the month may have no row yet.
+  const { error: snapErr } = await supabase.from('budget_months').upsert(
+    {
+      recurring_expense_id: recurringExpenseId,
+      month: toIsoMonth(currentMonthParam()),
+      amount,
+    },
+    { onConflict: 'user_id,recurring_expense_id,month' }
+  )
+  if (snapErr) throw snapErr
+
   revalidatePath('/settings')
   revalidatePath('/current')
   revalidateSpending()
