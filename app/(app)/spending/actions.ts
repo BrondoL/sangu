@@ -7,6 +7,7 @@ import {
   setBudgetAmount,
 } from '@/lib/queries/spending'
 import type { ActionState } from '@/lib/types'
+import { toRecurringExpenseId } from '@/lib/pos'
 
 const str = (fd: FormData, key: string) => String(fd.get(key) ?? '')
 const num = (fd: FormData, key: string) => Number(fd.get(key) ?? 0)
@@ -29,7 +30,7 @@ export async function addSpendingAction(
     await addSpending({
       occurred_on: str(formData, 'occurred_on'),
       amount,
-      recurring_expense_id: budget === '' ? null : budget,
+      recurring_expense_id: toRecurringExpenseId(budget),
       note: note === '' ? null : note,
     })
     return { ok: true }
@@ -61,7 +62,7 @@ export async function updateSpendingAction(
     await updateSpending(id, {
       occurred_on: str(formData, 'occurred_on'),
       amount,
-      recurring_expense_id: budget === '' ? null : budget,
+      recurring_expense_id: toRecurringExpenseId(budget),
       note: note === '' ? null : note,
     })
     return { ok: true }

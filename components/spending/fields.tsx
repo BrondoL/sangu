@@ -3,7 +3,15 @@
 import { useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Eyebrow } from '@/components/kwitansi'
+import { TAK_TERDUGA } from '@/lib/pos'
 
 /**
  * The two fields the capture form and the edit dialog share. They were written
@@ -13,15 +21,25 @@ import { Eyebrow } from '@/components/kwitansi'
  */
 
 /**
- * The pos a row is filed under. Deliberately a native `<select>` rather than
- * `components/ui/select`: "Tak terduga" is the empty value, and a Radix
- * `SelectItem` may not carry an empty string. Styled to the same rule as
- * `Input` so the two line up when they share a row.
+ * The pos a row is filed under, built from `components/ui/select` like every
+ * other picker in the app — see `components/settings/pickers.tsx`, whose shape
+ * this matches prop for prop.
+ *
+ * It was a hand-styled native `<select>` because "Tak terduga" was the empty
+ * string and a Radix `SelectItem` may not carry `value=""`. `TAK_TERDUGA` is
+ * that value given a name, so the option is an ordinary one and the actions
+ * turn it back into null on the way in.
+ *
+ * Radix is not a native control: it posts through a hidden `<select>` it
+ * renders itself, and only when the Root is given a `name`. Without that name
+ * the form submits nothing for the pos and every entry silently becomes tak
+ * terduga — which is why `fields.test.tsx` submits the form and reads the
+ * FormData rather than trusting the markup.
  */
 export function PosField({
   id,
   budgets,
-  defaultValue = '',
+  defaultValue = TAK_TERDUGA,
 }: {
   id: string
   budgets: { id: string; name: string }[]
@@ -30,19 +48,19 @@ export function PosField({
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>Pos</Label>
-      <select
-        id={id}
-        name="recurring_expense_id"
-        className="border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 h-8 w-full rounded-lg border bg-transparent px-2 text-base transition-colors outline-none focus-visible:ring-3 md:text-sm"
-        defaultValue={defaultValue}
-      >
-        <option value="">Tak terduga</option>
-        {budgets.map((b) => (
-          <option key={b.id} value={b.id}>
-            {b.name}
-          </option>
-        ))}
-      </select>
+      <Select name="recurring_expense_id" defaultValue={defaultValue}>
+        <SelectTrigger id={id} className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={TAK_TERDUGA}>Tak terduga</SelectItem>
+          {budgets.map((b) => (
+            <SelectItem key={b.id} value={b.id}>
+              {b.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   )
 }

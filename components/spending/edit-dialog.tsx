@@ -6,6 +6,7 @@ import { RupiahInput } from '@/components/rupiah-input'
 import { FormDialog } from '@/components/form-dialog'
 import { NoteField, PosField } from '@/components/spending/fields'
 import { formatRupiah } from '@/lib/format'
+import { toPosValue } from '@/lib/pos'
 import type { ActionState } from '@/lib/types'
 
 /** The part of a spending row this dialog can change, plus its id. */
@@ -62,7 +63,7 @@ export function SpendingFields({
       <PosField
         id={`${uid}-pos`}
         budgets={budgets}
-        defaultValue={entry.recurring_expense_id ?? ''}
+        defaultValue={toPosValue(entry.recurring_expense_id)}
       />
 
       <div className="space-y-1.5">
