@@ -114,3 +114,47 @@ export function compareAcrossMonths(input: {
     })),
   }))
 }
+
+export type Adjustment =
+  | { kind: 'ok' }
+  | { kind: 'raise'; amount: number; months: number }
+  | { kind: 'lower'; amount: number; months: number }
+
+const UNDER_USED = 0.6
+const ROUND_TO = 10_000
+
+function median(ns: number[]): number {
+  const s = [...ns].sort((a, b) => a - b)
+  const mid = Math.floor(s.length / 2)
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2
+}
+
+function roundUpTo(n: number, step: number): number {
+  return Math.ceil(n / step) * step
+}
+
+/**
+ * Deliberately dull, and stated on screen next to the verdict. A suggestion you
+ * cannot check is a suggestion you cannot trust, and this one changes a real
+ * number in the budget.
+ */
+export function suggestAdjustment(series: BudgetSeries): Adjustment {
+  const graded = series.points.filter(
+    (p): p is MonthPoint & { budget: number } => p.budget !== null && p.budget > 0
+  )
+  const recent = graded.slice(-4)
+  if (recent.length < 3) return { kind: 'ok' }
+
+  const suggestion = roundUpTo(median(recent.map((p) => p.spent)), ROUND_TO)
+  if (suggestion === recent[recent.length - 1].budget) return { kind: 'ok' }
+
+  const over = recent.filter((p) => p.spent > p.budget).length
+  if (over >= 3) return { kind: 'raise', amount: suggestion, months: recent.length }
+
+  const under = recent.filter((p) => p.spent <= p.budget * UNDER_USED).length
+  if (recent.length === 4 && under === 4) {
+    return { kind: 'lower', amount: suggestion, months: recent.length }
+  }
+
+  return { kind: 'ok' }
+}

@@ -182,3 +182,98 @@ describe('compareAcrossMonths', () => {
     expect(june.spent).toBe(1_320_000)
   })
 })
+
+import { suggestAdjustment } from './budget'
+
+const series = (points: [string, number | null, number][]): BudgetSeries => ({
+  id: 'jajan',
+  name: 'Jajan',
+  points: points.map(([month, budget, spent]) => ({ month, budget, spent })),
+})
+
+describe('suggestAdjustment', () => {
+  it('suggests raising when over budget in three of the last four months', () => {
+    const a = suggestAdjustment(
+      series([
+        ['2026-05', 1_750_000, 1_800_000],
+        ['2026-06', 1_750_000, 1_950_000],
+        ['2026-07', 1_750_000, 1_760_000],
+        ['2026-08', 1_750_000, 1_900_000],
+      ])
+    )
+    expect(a).toEqual({ kind: 'raise', amount: 1_850_000, months: 4 })
+  })
+
+  it('suggests lowering when 60% or less is used four months running', () => {
+    const a = suggestAdjustment(
+      series([
+        ['2026-05', 500_000, 200_000],
+        ['2026-06', 500_000, 250_000],
+        ['2026-07', 500_000, 180_000],
+        ['2026-08', 500_000, 300_000],
+      ])
+    )
+    expect(a).toEqual({ kind: 'lower', amount: 230_000, months: 4 })
+  })
+
+  it('says nothing when the months disagree', () => {
+    const a = suggestAdjustment(
+      series([
+        ['2026-05', 1_750_000, 1_800_000],
+        ['2026-06', 1_750_000, 1_200_000],
+        ['2026-07', 1_750_000, 1_900_000],
+        ['2026-08', 1_750_000, 1_500_000],
+      ])
+    )
+    expect(a).toEqual({ kind: 'ok' })
+  })
+
+  it('will not rule on fewer than three recorded months', () => {
+    const a = suggestAdjustment(
+      series([
+        ['2026-05', null, 0],
+        ['2026-06', null, 0],
+        ['2026-07', 1_750_000, 1_900_000],
+        ['2026-08', 1_750_000, 1_950_000],
+      ])
+    )
+    expect(a).toEqual({ kind: 'ok' })
+  })
+
+  it('ignores gap months rather than reading them as zero spend', () => {
+    const a = suggestAdjustment(
+      series([
+        ['2026-05', 500_000, 200_000],
+        ['2026-06', null, 0],
+        ['2026-07', 500_000, 250_000],
+        ['2026-08', 500_000, 180_000],
+      ])
+    )
+    // Three graded months, all well under, but 'lower' needs four.
+    expect(a).toEqual({ kind: 'ok' })
+  })
+
+  it('stays quiet when the suggestion is the budget already set', () => {
+    const a = suggestAdjustment(
+      series([
+        ['2026-05', 1_000_000, 1_000_000],
+        ['2026-06', 1_000_000, 1_000_000],
+        ['2026-07', 1_000_000, 1_000_000],
+        ['2026-08', 1_000_000, 1_000_000],
+      ])
+    )
+    expect(a).toEqual({ kind: 'ok' })
+  })
+
+  it('skips budgets of zero, which have nothing to be over', () => {
+    const a = suggestAdjustment(
+      series([
+        ['2026-05', 0, 50_000],
+        ['2026-06', 0, 60_000],
+        ['2026-07', 0, 70_000],
+        ['2026-08', 0, 80_000],
+      ])
+    )
+    expect(a).toEqual({ kind: 'ok' })
+  })
+})
