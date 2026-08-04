@@ -407,3 +407,44 @@ budgets at all, so the first thing a human has to do before anything else is
 testable is tick some on in Pengaturan → Dilacak. The full list of what still
 needs a real browser is in `task-10-report.md` under
 `.superpowers/sdd/2026-08-04-budget-control/`.
+
+### Two mechanisms that can now be seen to break, 2026-08-04
+
+The tests here had only ever covered pure functions, plus two components
+asserted as static markup. That is the right shape for a calculator and the
+wrong shape for the code that writes a financial record: the one Critical
+defect in this branch was a capture form that never cleared its amount, and it
+passed `tsc`, lint, the whole suite *and* the production build, because what
+was wrong about it was not its output at any one moment but what it still held
+a moment later. A human reading two files found it.
+
+Two mechanisms carry that lesson and now have tests that have been watched to
+fail. `components/spending/capture-form.test.tsx` fills the amount, submits,
+and asserts a second Catat posts `0` rather than the first entry's figure —
+with the remount key removed it posts the first figure twice, which is the
+original defect exactly. `components/form-dialog.test.tsx` opens a dialog on
+one row, closes it, reopens it on another, and asserts the second row's amount
+is what shows — with `<Fragment key={opens}>` removed it shows the first row's.
+
+Both files opt into a DOM with a `// @vitest-environment jsdom` docblock rather
+than through `vitest.config.mts`, so the ten node-environment files still spin
+up no environment at all and run in the same 430ms they did before. The only
+new dependency is `@testing-library/react`.
+
+The dialog test has to lie to jsdom about one thing, and it is worth knowing
+why. The mechanism only matters inside the exit-animation window, and jsdom
+runs no CSS, so Radix sees no animation, unmounts on close, and hands the
+fields their defaults back on its own — the test would pass with the mechanism
+deleted. So `getComputedStyle` is stubbed to report an exit animation for the
+nodes Radix drives by `data-state`, and a first assertion checks the dialog is
+still in the DOM after closing, so that if a future Radix stops suspending, the
+suite says so instead of quietly going green for the wrong reason.
+
+**What this does not cover, deliberately.** `lib/queries/` still has no tests
+at all. Every one of them talks to Supabase, and testing them honestly means
+either a live database — which no test here is allowed to write to — or a mock
+of the client deep enough that it would mostly be testing itself. Two component
+mechanisms are verified; the layer that actually reads and writes the ledger is
+not, and that gap is a stated limit rather than an oversight. Neither is any
+other component: the two here were chosen because they are the branch's most
+fragile and least observable, not because the rest were checked and cleared.
