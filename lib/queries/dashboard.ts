@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { shiftMonth, toIsoMonth } from '@/lib/month'
 import type { MonthlyCalcInput } from '@/lib/types'
+import type { Tables } from '@/lib/database.types'
 
 /**
  * Total planned spend per month for the trailing window ending at `month`,
@@ -37,8 +38,14 @@ export async function getExpenseTrend(
  * Loads everything `calculateMonthlySummary` needs for one month and maps the
  * DB's snake_case into the calc engine's camelCase. Deliberately does NOT run
  * the calculation — the page does that, so this stays a pure DB read.
+ *
+ * The account rows come back alongside the calc input because the page renders
+ * them too. They are already in hand here, and calling `listAccounts` for them
+ * would ask the same table for the same rows a second time.
  */
-export async function getMonthlyData(month: string): Promise<MonthlyCalcInput> {
+export async function getMonthlyData(
+  month: string
+): Promise<{ input: MonthlyCalcInput; accounts: Tables<'accounts'>[] }> {
   const supabase = await createClient()
   const iso = toIsoMonth(month)
 
@@ -77,13 +84,19 @@ export async function getMonthlyData(month: string): Promise<MonthlyCalcInput> {
     isProxy: a.is_proxy,
   })
 
+  const all = accounts ?? []
+  const baseSalary = settings?.base_salary ?? 0
+
   if (!period) {
     return {
-      accounts: (accounts ?? []).filter((a) => a.is_active).map(toCalcAccount),
-      items: [],
-      balances: [],
-      actualSalary: null,
-      baseSalary: settings?.base_salary ?? 0,
+      accounts: all,
+      input: {
+        accounts: all.filter((a) => a.is_active).map(toCalcAccount),
+        items: [],
+        balances: [],
+        actualSalary: null,
+        baseSalary,
+      },
     }
   }
 
@@ -97,20 +110,23 @@ export async function getMonthlyData(month: string): Promise<MonthlyCalcInput> {
   ])
 
   return {
-    accounts: (accounts ?? [])
-      .filter((a) => a.is_active || involved.has(a.id))
-      .map(toCalcAccount),
-    items: items.map((i) => ({
-      accountId: i.account_id,
-      amount: i.amount,
-      category: i.category,
-      isPaid: i.is_paid,
-    })),
-    balances: balances.map((b) => ({
-      accountId: b.account_id,
-      balance: b.balance,
-    })),
-    actualSalary: period.actual_salary,
-    baseSalary: settings?.base_salary ?? 0,
+    accounts: all,
+    input: {
+      accounts: all
+        .filter((a) => a.is_active || involved.has(a.id))
+        .map(toCalcAccount),
+      items: items.map((i) => ({
+        accountId: i.account_id,
+        amount: i.amount,
+        category: i.category,
+        isPaid: i.is_paid,
+      })),
+      balances: balances.map((b) => ({
+        accountId: b.account_id,
+        balance: b.balance,
+      })),
+      actualSalary: period.actual_salary,
+      baseSalary,
+    },
   }
 }

@@ -8,7 +8,6 @@ import { Breakdown } from '@/components/dashboard/breakdown'
 import { SharePie } from '@/components/dashboard/share-pie'
 import { TrendLine } from '@/components/dashboard/trend-line'
 import { getMonthlyData, getExpenseTrend } from '@/lib/queries/dashboard'
-import { listAccounts } from '@/lib/queries/accounts'
 import { calculateMonthlySummary } from '@/lib/calculations'
 import { currentMonthParam, toMonthParam } from '@/lib/month'
 import { formatRupiah } from '@/lib/format'
@@ -29,9 +28,8 @@ export default async function DashboardPage({
   const { month: monthParam } = await searchParams
   const month = toMonthParam(monthParam ?? currentMonthParam())
 
-  const [input, accounts, trend] = await Promise.all([
+  const [{ input, accounts }, trend] = await Promise.all([
     getMonthlyData(month),
-    listAccounts(),
     getExpenseTrend(month),
   ])
   const summary = calculateMonthlySummary(input)
