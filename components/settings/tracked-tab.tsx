@@ -16,6 +16,40 @@ type Row = {
   tracked: boolean
 }
 
+function TrackedRow({
+  row,
+  action,
+}: {
+  row: Row
+  action: (id: string, tracked: boolean) => Promise<ActionState>
+}) {
+  // Its own transition, so one row in flight never disables its neighbours —
+  // same reason components/current/item-row.tsx keeps state per row.
+  const [pending, startTransition] = useTransition()
+
+  return (
+    <li className="flex items-center gap-3 py-2.5">
+      <Checkbox
+        id={`tracked-${row.id}`}
+        checked={row.tracked}
+        disabled={pending}
+        onCheckedChange={(next) =>
+          startTransition(async () => {
+            const result = await action(row.id, next === true)
+            if (result && !result.ok) toast.error(result.message)
+          })
+        }
+      />
+      <Label htmlFor={`tracked-${row.id}`} className="flex-1 font-normal">
+        {row.name}
+      </Label>
+      <span className="amount text-muted-foreground text-sm">
+        {formatRupiah(row.default_amount)}
+      </span>
+    </li>
+  )
+}
+
 export function TrackedTab({
   rows,
   action,
@@ -23,8 +57,6 @@ export function TrackedTab({
   rows: Row[]
   action: (id: string, tracked: boolean) => Promise<ActionState>
 }) {
-  const [pending, startTransition] = useTransition()
-
   return (
     <Card>
       <CardContent className="space-y-4">
@@ -39,25 +71,7 @@ export function TrackedTab({
           {rows
             .filter((r) => r.is_active)
             .map((r) => (
-              <li key={r.id} className="flex items-center gap-3 py-2.5">
-                <Checkbox
-                  id={`tracked-${r.id}`}
-                  checked={r.tracked}
-                  disabled={pending}
-                  onCheckedChange={(next) =>
-                    startTransition(async () => {
-                      const result = await action(r.id, next === true)
-                      if (result && !result.ok) toast.error(result.message)
-                    })
-                  }
-                />
-                <Label htmlFor={`tracked-${r.id}`} className="flex-1 font-normal">
-                  {r.name}
-                </Label>
-                <span className="amount text-muted-foreground text-sm">
-                  {formatRupiah(r.default_amount)}
-                </span>
-              </li>
+              <TrackedRow key={r.id} row={r} action={action} />
             ))}
         </ul>
       </CardContent>

@@ -90,7 +90,7 @@ export default async function SettingsPage() {
         <TabsContent value="salary" className="pt-4">
           <BaseSalaryForm baseSalary={settings.base_salary} />
         </TabsContent>
-        <TabsContent value="tracked">
+        <TabsContent value="tracked" className="pt-4">
           <TrackedTab rows={trackable} action={toggleTrackedAction} />
         </TabsContent>
       </Tabs>
