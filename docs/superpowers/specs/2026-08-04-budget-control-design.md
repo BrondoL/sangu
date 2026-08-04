@@ -162,9 +162,9 @@ done several times a day.
 remaining or over, and a bar. Then every entry made in the month, newest first,
 each showing which budget it went to — "Tak terduga" when it has none, or when
 its budget is no longer tracked — and its note. Every row, not only the
-unattached ones: a row that is not listed is a row that cannot be deleted, and
-a mistyped amount that cannot be removed is what eventually raises a real
-budget. Both figures beside the section heading are labelled, "total" and "tak
+unattached ones: a row that is not listed is a row that cannot be corrected or
+deleted, and a mistyped amount that cannot be fixed is what eventually raises a
+real budget. Both figures beside the section heading are labelled, "total" and "tak
 terduga", and the heading names the month it is showing rather than saying
 "bulan ini" over a picker that may be on June.
 
@@ -185,17 +185,42 @@ Bensin       200.000   terpakai   150.000   sisa    50.000  ▓▓▓▓▓▓�
 Parkir        36.000   terpakai    41.000   lebih     5.000  ▓▓▓▓▓▓▓▓▓▓
 
 Catatan Agustus 2026   total 2.778.000 · tak terduga 167.000
-  22/08  Servis kipas                     122.000  [hapus]
-  20/08  Jajan / kopi                      25.000  [hapus]
-  14/08  Laundry                           45.000  [hapus]
+  22/08  Servis kipas                     122.000  [ubah] [hapus]
+  20/08  Jajan / kopi                      25.000  [ubah] [hapus]
+  14/08  Laundry                           45.000  [ubah] [hapus]
 ```
 
 A month picker, matching the dashboard's. The capture date follows it: today
 when the current month is open, otherwise the first of the month being viewed,
-so catching up on July does not file into August. Each spending row can be
-deleted, behind a confirmation naming the entry — its amount, its date and its
-pos or note — because a dialog that says only "Hapus Jajan?" names a budget
-summary row sitting directly above it, on a delete that cannot be undone.
+so catching up on July does not file into August.
+
+Each spending row can be **edited or deleted**, the two controls grouped
+together at the end of the row. Delete is behind a confirmation naming the
+entry — its amount, its date and its pos or note — because a dialog that says
+only "Hapus Jajan?" names a budget summary row sitting directly above it, on a
+delete that cannot be undone.
+
+Edit opens a dialog (the `FormDialog` pattern the settings editors use) holding
+the same four fields as capture, filled in from the row: amount, pos, date,
+note. Correcting a typo must not mean deleting the row and retyping it — the
+wrong figure counts until it is fixed, including in the months stage 2 reads
+before it offers to raise a real budget, so the cheapest fix has to be the
+correct one rather than the destructive one.
+
+Two things the edit dialog owes the row it opens on:
+
+- **Its pos stays its own.** The select lists the tracked budgets plus "Tak
+  terduga", with the row's current pos preselected *even when that pos is no
+  longer tracked or has been retired* — marked as such, so it does not read as
+  an ordinary tracked budget. Those rows show as "Tak terduga" in the list
+  because no budget line claims them; preselecting the empty option would
+  refile the row to nothing the moment its amount was corrected, which is a
+  second edit nobody asked for.
+- **Its amount is the row's own on every open.** `RupiahInput` holds its value
+  in React state, which no changed `defaultValue` reaches; the dialog mounts
+  its fields fresh each time it opens rather than trusting the close animation
+  to have unmounted them, so opening a second row never shows the first row's
+  figure.
 
 Entries are ordered newest first by date, then by when they were recorded.
 Several entries a day is the normal case, and date alone leaves those ties for
@@ -329,12 +354,17 @@ the rest of `lib/queries/`.
 - **Untracking a budget** keeps its history. Re-tracking it later shows the
   months it was away as gaps, not zeros. Spending already filed against it has
   no line to sit under any more, so on the month page it reads as "tak terduga"
-  and counts towards that total — visible and deletable. On Riwayat it joins
+  and counts towards that total — visible, editable and deletable, and editing
+  it leaves it filed where it is unless the pos is deliberately changed. On
+  Riwayat it joins
   the unattached pool, so it counts towards that page's tak-terduga total and
   can still surface as a budget worth having. Untracking must not be able to
   make recorded money vanish from the screen, on either page.
 - **Editing a spending row's date** moves it between months; both months'
-  figures follow.
+  figures follow. The month picker does not chase it: the page goes on showing
+  the month it was showing, so the row leaves the list and that month's totals
+  drop by its amount. The date field says so before the edit is made, because
+  a row vanishing from the list is otherwise indistinguishable from a delete.
 
 ## Testing
 
@@ -342,6 +372,12 @@ Pure functions in `lib/budget.ts` are unit-tested with Vitest, including the
 gap-versus-zero distinction and each verdict boundary. The query layer is not
 unit-tested, matching the existing repo (no query tests exist today); it is
 checked by driving the page.
+
+The edit form's pre-fill is asserted as static markup, the way
+`components/submit-button.test.tsx` already does — the row's own amount, date,
+note and pos, including the pos that is no longer tracked. What that cannot
+reach is the dialog opening: there is no DOM environment here, so *whether the
+second open shows the second row's amount* is checked by hand, in a browser.
 
 ## Decisions taken
 
