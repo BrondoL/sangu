@@ -47,6 +47,13 @@ The write is behind a confirmation dialog showing the old and new figure,
 following the `AlertDialog` pattern already in `components/delete-button.tsx`.
 Nothing in this feature changes a budget without an explicit second tap.
 
+The dialog is not the guard, though. `lib/queries/spending.ts` carries a
+top-level `'use server'`, so every export in it is an endpoint any page that
+ever rendered can still call — a tab opened before a budget was untracked or
+deactivated still holds a live reference to that action. The write therefore
+re-checks its own preconditions: a positive integer amount, and a budget that
+is still tracked and still active. Otherwise it refuses, in Indonesian.
+
 ## Which budgets get tracked
 
 Not all 23. The recurring expenses split cleanly in two:
@@ -140,8 +147,10 @@ actually spent is never deleted by a definition change.
 Route `app/(app)/spending/`, nav label **Belanja**, fifth tab.
 
 **Capture.** A single always-visible row at the top of the page: amount, budget
-(a select of tracked budgets plus "Tak terduga"), date defaulting to today in
-`Asia/Jakarta`, optional note. The note is free text with a datalist of notes
+(a select of tracked budgets plus "Tak terduga"), date, optional note. The date
+defaults to the month on screen — today in `Asia/Jakarta` when the current month
+is open, otherwise the first of the month being viewed, so catching up on July
+does not file into August (see the picker, below). The note is free text with a datalist of notes
 already used, so reuse is easier than retyping. Submitting keeps the form in
 place and focused for the next entry. This is the whole capture surface — no
 separate screen, no modal, because a modal is one tap of friction on a thing
@@ -153,17 +162,27 @@ each showing which budget it went to — "Tak terduga" when it has none, or when
 its budget is no longer tracked — and its note. Every row, not only the
 unattached ones: a row that is not listed is a row that cannot be deleted, and
 a mistyped amount that cannot be removed is what eventually raises a real
-budget.
+budget. Both figures beside the section heading are labelled, "total" and "tak
+terduga", and the heading names the month it is showing rather than saying
+"bulan ini" over a picker that may be on June.
+
+Only the current month is snapshotted, so a past month the picker reaches may
+have no budget recorded. Those rows read the same way Riwayat reads them —
+spend, then "budget belum tercatat", no bar and no remaining-or-over — never a
+budget of Rp 0 and never today's `default_amount` stood in for a month it never
+applied to. Grading June against August's figure would print a red "Lebih" the
+month's own history does not support, and would contradict Riwayat calling that
+same month a gap.
 
 ```
-Agustus                          catat: [ 25.000 ] [Jajan ▾] [hari ini]
+Agustus                          catat: [ 25.000 ] [Jajan ▾] [tanggal]
 
 Jajan      1.750.000   terpakai 1.240.000   sisa   510.000  ▓▓▓▓▓▓▓░░░
 Makan      1.000.000   terpakai 1.180.000   lebih  180.000  ▓▓▓▓▓▓▓▓▓▓
 Bensin       200.000   terpakai   150.000   sisa    50.000  ▓▓▓▓▓▓▓░░░
 Parkir        36.000   terpakai    41.000   lebih     5.000  ▓▓▓▓▓▓▓▓▓▓
 
-Catatan bulan ini            tak terduga  167.000
+Catatan Agustus 2026   total 2.778.000 · tak terduga 167.000
   22/08  Servis kipas                     122.000  [hapus]
   20/08  Jajan / kopi                      25.000  [hapus]
   14/08  Laundry                           45.000  [hapus]
@@ -172,7 +191,13 @@ Catatan bulan ini            tak terduga  167.000
 A month picker, matching the dashboard's. The capture date follows it: today
 when the current month is open, otherwise the first of the month being viewed,
 so catching up on July does not file into August. Each spending row can be
-deleted.
+deleted, behind a confirmation naming the entry — its amount, its date and its
+pos or note — because a dialog that says only "Hapus Jajan?" names a budget
+summary row sitting directly above it, on a delete that cannot be undone.
+
+Entries are ordered newest first by date, then by when they were recorded.
+Several entries a day is the normal case, and date alone leaves those ties for
+Postgres to order however it likes, which reshuffles the list between renders.
 
 **Choosing what to track** is a new **Dilacak** tab in Pengaturan, listing the
 active recurring expenses with a toggle each. A separate tab rather than a
@@ -232,9 +257,13 @@ it pure and tested in `lib/`.
 `lib/budget.ts`:
 
 - `summarizeBudgetMonth(budgets, spending)` → per budget `{ id, name, budget,
-  spent, remaining, over, ratio }`, plus the unattached total. Handles a budget
-  of 0 (Self Reward Nabil is currently 0) by reporting spend with no ratio
-  rather than dividing by zero.
+  spent, remaining, over, ratio, fill }`, plus the unattached total and the
+  month's total spend. Handles a budget of 0 (Self Reward Nabil is currently 0)
+  by reporting spend with no ratio rather than dividing by zero. Handles a month
+  with no snapshot the same way `compareAcrossMonths` does — `budget: null`,
+  and `remaining`/`over` null with it, in one union so nothing can report "Sisa
+  Rp 0" against a budget that was never written down. A budget of zero and a
+  budget nobody recorded are different claims and stay distinguishable.
 - `compareAcrossMonths(snapshots, spending, months)` → per budget, a series with
   explicit gaps for months that were never snapshotted.
 - `suggestAdjustment(series)` → `{ kind: 'raise' | 'lower' | 'ok', amount }`
