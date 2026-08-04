@@ -356,9 +356,13 @@ Three decisions worth keeping:
    capturing daily. Logging Kontrakan per transaction tells you nothing you
    did not already know.
 2. **`budget_months` snapshots the budget per month.** Without it, raising
-   Jajan rewrites the July record that justified raising it. It ships with
-   stage 1 even though only the riwayat page reads it, because a snapshot
-   taken later cannot cover months already gone.
+   Jajan would rewrite the July record that justified raising it. Both pages
+   read it, not just one: Belanja through `listBudgetsForMonth`, so the month
+   you're looking at shows the budget that applied then rather than the one
+   that applies today, and Riwayat through `getSpendingHistory`, to draw the
+   comparison across months. Only the writing is stage-1-only — the snapshot
+   is taken the first time a month's page is opened, and a snapshot taken
+   later cannot cover months already gone.
 3. **A month with no snapshot renders as a gap, never zero.** A month you
    forgot to record is not a month you spent nothing, and that is the failure
    mode most likely to make the whole feature lie.
@@ -372,10 +376,13 @@ A fourth decision came out of building the thing, not out of the spec.
 stays in Dilacak, marked "Non-aktif", so it can still be untracked by hand,
 and its spending history stays on Riwayat exactly as recorded. But it drops
 off Belanja — a retired expense has nothing live to spend against — and
-Riwayat stops offering it an adjustment, since there is no longer a
-`default_amount` worth changing. Deleting the row outright would have taken
-an already-recorded month down with the definition that produced it, which is
-the same failure mode decision 3 above was written to avoid.
+Riwayat stops offering it an adjustment — not because `default_amount` is
+gone, deactivating only flips `is_active` and the amount sits there untouched
+— but because there is no live month left for a changed figure to apply to,
+so the app declines to offer a change with nothing left to test it against.
+Deleting the row outright would have taken an already-recorded month down
+with the definition that produced it, which is the same failure mode
+decision 3 above was written to avoid.
 
 A few smaller choices are worth naming so they don't get "cleaned up" later
 by someone who didn't see why they're there:

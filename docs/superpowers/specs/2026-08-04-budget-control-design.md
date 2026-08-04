@@ -111,7 +111,11 @@ Snapshotting the budget per month keeps history honest.
 
 The row is written lazily: when the month's page is first loaded, any tracked
 budget without a row for that month gets one, copying `default_amount` as it
-stands then. **This must ship in stage 1 even though only stage 2 reads it** —
+stands then. **The write must ship in stage 1, and so must the read** — stage
+1 itself reads the snapshot back, so the month you're looking at shows the
+budget that applied then rather than whatever `default_amount` holds today,
+and stage 2 reads the same table to draw its comparison across months. Only
+the writing is a stage-1-only step: it has to run before stage 2 exists,
 otherwise stage 2 launches against months that were never snapshotted.
 
 ### Deletion behaviour
