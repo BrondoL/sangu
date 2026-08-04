@@ -170,8 +170,30 @@ export async function setTracked(recurringExpenseId: string, tracked: boolean) {
 /**
  * The one write this feature makes into the planner's data. Guarded by a
  * confirmation dialog in the UI — nothing changes a budget on one tap.
+ *
+ * The dialog is not the guard, though. This file carries a top-level
+ * 'use server', so every export here is an endpoint any page that ever
+ * rendered can still call: a tab opened before a budget was untracked or
+ * deactivated still holds a live reference to this action, and would write
+ * through it. So the conditions the UI checks before showing the button are
+ * checked again here, where they cannot be skipped.
  */
 export async function setBudgetAmount(recurringExpenseId: string, amount: number) {
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw new Error('Nominal budget harus bilangan bulat lebih dari nol.')
+  }
+
+  const tracked = await listTrackedBudgets()
+  const target = tracked.find((b) => b.id === recurringExpenseId)
+  if (!target) {
+    throw new Error(
+      'Pos ini sudah tidak dilacak, jadi budgetnya tidak bisa diubah dari sini.'
+    )
+  }
+  if (!target.isActive) {
+    throw new Error('Pos ini sudah non-aktif, jadi budgetnya tidak bisa diubah.')
+  }
+
   const supabase = await createClient()
   const { error } = await supabase
     .from('recurring_expenses')
