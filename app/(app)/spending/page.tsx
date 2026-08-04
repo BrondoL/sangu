@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { MonthPicker } from '@/components/month-picker'
-import { Eyebrow, PageHeader } from '@/components/kwitansi'
+import { Amount, Eyebrow, MoneyRow, PageHeader, SectionHead } from '@/components/kwitansi'
 import { DeleteButton } from '@/components/delete-button'
 import { CaptureForm } from '@/components/spending/capture-form'
 import { BudgetRow } from '@/components/spending/budget-row'
@@ -128,54 +128,66 @@ export default async function SpendingPage({
         action={addSpendingAction}
       />
 
-      {budgets.length === 0 ? (
-        <Card>
-          <CardContent>
+      <Card>
+        <CardContent>
+          <SectionHead title={`Budget ${formatMonthLabel(month)}`} />
+
+          {budgets.length === 0 ? (
             <p className="text-muted-foreground text-sm">
               Belum ada pos yang dilacak. Pilih dulu di Pengaturan → Dilacak.
+              Sampai itu, semua pengeluaran masuk tak terduga.
             </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent>
-            <ul className="divide-border divide-y">
+          ) : (
+            <ul className="divide-border -mt-1 divide-y">
               {summary.lines.map((line) => (
                 <BudgetRow key={line.id} line={line} />
               ))}
             </ul>
-          </CardContent>
-        </Card>
-      )}
+          )}
+
+          {/*
+            The card has to add up to the month. Listing only the tracked
+            budgets left the money spent outside them off the one card that
+            claims to summarise the month — it was findable, but only by
+            reading the section below and adding.
+
+            Tak terduga has no budget behind it, so it gets no bar and no
+            "sisa"/"lebih": the hint says why the figure stands alone rather
+            than leaving it looking like a row missing half its data. Both
+            figures come from `summarizeBudgetMonth` — nothing is added here.
+          */}
+          <MoneyRow
+            label="Tak terduga"
+            hint="Tanpa pos, jadi tidak ada budget untuk membandingkannya."
+            value={summary.unattachedTotal}
+            strong
+          />
+          <MoneyRow
+            label={<Eyebrow>Jumlah</Eyebrow>}
+            value={summary.totalSpent}
+            strong
+          />
+        </CardContent>
+      </Card>
 
       <Card>
-        <CardContent className="space-y-2.5">
+        <CardContent>
           {/* Named for the month on screen, not "bulan ini", which is a lie
-              whenever the picker is on a past month. And both figures are
-              labelled: the section lists every row, so an unlabelled
-              unattached total sitting beside that heading reads as the
-              month's total at a glance. */}
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <Eyebrow>Catatan {formatMonthLabel(month)}</Eyebrow>
-            <span className="text-muted-foreground text-xs">
-              total{' '}
-              <span className="amount text-foreground text-sm">
-                {formatRupiah(summary.totalSpent)}
-              </span>
-              <span className="px-1.5">·</span>
-              tak terduga{' '}
-              <span className="amount text-foreground text-sm">
-                {formatRupiah(summary.unattachedTotal)}
-              </span>
-            </span>
-          </div>
+              whenever the picker is on a past month. The totals used to sit
+              here because the card above did not carry them; now that it
+              closes with tak terduga and a jumlah, this heading only has to
+              say how many rows are under it. */}
+          <SectionHead
+            title={`Catatan ${formatMonthLabel(month)}`}
+            aside={spending.length === 0 ? undefined : `${spending.length} baris`}
+          />
 
           {spending.length === 0 ? (
-            <p className="text-muted-foreground text-xs">
+            <p className="text-muted-foreground text-sm">
               Belum ada pengeluaran di {formatMonthLabel(month)}.
             </p>
           ) : (
-            <ul className="divide-border divide-y">
+            <ul className="divide-border -mt-1 divide-y">
               {spending.map((s) => (
                 <li key={s.id} className="flex items-center gap-3 py-2">
                   <span className="amount text-muted-foreground text-xs">
@@ -191,7 +203,7 @@ export default async function SpendingPage({
                       </span>
                     )}
                   </span>
-                  <span className="amount text-sm">{formatRupiah(s.amount)}</span>
+                  <Amount value={s.amount} size="sm" className="shrink-0" />
                   {/* Both dialogs name the entry, not a budget. Passing the
                       note-or-pos alone produced "Hapus Jajan?" on any attached
                       row without a note — and "Jajan" is also a budget row a
