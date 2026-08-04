@@ -6,6 +6,7 @@ import { RecurringTab } from '@/components/settings/recurring-tab'
 import { InstallmentsTab } from '@/components/settings/installments-tab'
 import { SavingsTab } from '@/components/settings/savings-tab'
 import { BaseSalaryForm } from '@/components/settings/base-salary-form'
+import { TrackedTab } from '@/components/settings/tracked-tab'
 import { listAccounts } from '@/lib/queries/accounts'
 import {
   listRecurring,
@@ -13,8 +14,10 @@ import {
   listSavingsGoals,
   getSettings,
 } from '@/lib/queries/definitions'
+import { listAllRecurringWithTracking } from '@/lib/queries/spending'
 import { currentMonthParam } from '@/lib/month'
 import { logout } from '@/app/auth/actions'
+import { toggleTrackedAction } from './actions'
 
 function Count({ n }: { n: number }) {
   return (
@@ -23,13 +26,14 @@ function Count({ n }: { n: number }) {
 }
 
 export default async function SettingsPage() {
-  const [accounts, recurring, installments, savingsGoals, settings] =
+  const [accounts, recurring, installments, savingsGoals, settings, trackable] =
     await Promise.all([
       listAccounts(),
       listRecurring(),
       listInstallments(),
       listSavingsGoals(),
       getSettings(),
+      listAllRecurringWithTracking(),
     ])
 
   return (
@@ -62,6 +66,9 @@ export default async function SettingsPage() {
             Target <Count n={savingsGoals.length} />
           </TabsTrigger>
           <TabsTrigger value="salary">Gaji</TabsTrigger>
+          <TabsTrigger value="tracked">
+            Dilacak <Count n={trackable.filter((r) => r.tracked).length} />
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="accounts" className="pt-4">
@@ -82,6 +89,9 @@ export default async function SettingsPage() {
         </TabsContent>
         <TabsContent value="salary" className="pt-4">
           <BaseSalaryForm baseSalary={settings.base_salary} />
+        </TabsContent>
+        <TabsContent value="tracked" className="pt-4">
+          <TrackedTab rows={trackable} action={toggleTrackedAction} />
         </TabsContent>
       </Tabs>
     </div>

@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, CalendarRange, Target, Settings } from 'lucide-react'
+import { LayoutDashboard, CalendarRange, Target, Settings, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const LINKS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/current', label: 'Bulan Ini', icon: CalendarRange },
+  { href: '/spending', label: 'Belanja', icon: Wallet },
   { href: '/goals', label: 'Target', icon: Target },
   { href: '/settings', label: 'Pengaturan', icon: Settings },
 ]
@@ -71,7 +72,7 @@ export function BottomNav() {
 }
 
 /**
- * The same four destinations as a row in the header. A bottom tab bar stranded
+ * The same five destinations as a row in the header. A bottom tab bar stranded
  * across a 1440px monitor reads as a phone app that was never finished.
  */
 export function HeaderNav() {

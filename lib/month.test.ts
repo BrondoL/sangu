@@ -4,9 +4,11 @@ import {
   toIsoMonth,
   toMonthParam,
   formatMonthLabel,
+  formatDateLabel,
   currentMonthParam,
   monthsBetween,
 } from './month'
+import { currentDateParam } from './month'
 
 describe('shiftMonth', () => {
   it('moves forward within a year', () => {
@@ -69,5 +71,26 @@ describe('formatMonthLabel', () => {
   })
   it('accepts a full ISO date', () => {
     expect(formatMonthLabel('2026-01-01')).toBe('Januari 2026')
+  })
+})
+
+describe('formatDateLabel', () => {
+  it('renders a full ISO date in Indonesian, without a leading zero on the day', () => {
+    expect(formatDateLabel('2026-08-22')).toBe('22 Agustus 2026')
+    expect(formatDateLabel('2026-01-05')).toBe('5 Januari 2026')
+  })
+  it('does not shift the day, whatever the machine timezone is', () => {
+    // A Date-based formatter would read this as the 31st in a western zone.
+    expect(formatDateLabel('2026-12-01')).toBe('1 Desember 2026')
+  })
+})
+
+describe('currentDateParam', () => {
+  it('reads the WIB date, not the UTC one', () => {
+    // 2026-08-04T18:30Z is already 2026-08-05 in Jakarta (UTC+7).
+    expect(currentDateParam(new Date('2026-08-04T18:30:00Z'))).toBe('2026-08-05')
+  })
+  it('does not roll forward before the WIB day ends', () => {
+    expect(currentDateParam(new Date('2026-08-04T16:59:00Z'))).toBe('2026-08-04')
   })
 })

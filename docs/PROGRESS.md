@@ -337,3 +337,114 @@ Each was a deliberate call; the plan text was not rewritten to match.
 body), then `app/(app)/goals/page.tsx` replacing the placeholder, using the
 existing `getGoalProgress()` in `lib/queries/goals.ts` plus the current month's
 saving items for the "sudah menabung bulan ini" checklist.
+
+## Budget control, 2026-08-04
+
+Sangu planned but never knew what a month actually cost, so a budget could
+drift from reality for years without anything saying so. Three new tables
+record spending as it happens and hold it against `recurring_expenses`.
+
+A full wallet ledger was designed first and dropped: it demands daily
+discipline forever and its payoff, knowing your balance, is something
+m-banking already gives away. The one question only sangu can answer is
+whether a budget is realistic, and that is all this does.
+
+Three decisions worth keeping:
+
+1. **Tracking is opt-in per budget.** Of the 23 recurring expenses, only the
+   variable ones — Jajan, Makan, Bensin, Parkir — carry information worth
+   capturing daily. Logging Kontrakan per transaction tells you nothing you
+   did not already know.
+2. **`budget_months` snapshots the budget per month.** Without it, raising
+   Jajan would rewrite the July record that justified raising it. Both pages
+   read it, not just one: Belanja through `listBudgetsForMonth`, so the month
+   you're looking at shows the budget that applied then rather than the one
+   that applies today, and Riwayat through `getSpendingHistory`, to draw the
+   comparison across months. Only the writing is stage-1-only — the snapshot
+   is taken the first time a month's page is opened, and a snapshot taken
+   later cannot cover months already gone.
+3. **A month with no snapshot renders as a gap, never zero.** A month you
+   forgot to record is not a month you spent nothing, and that is the failure
+   mode most likely to make the whole feature lie.
+
+The one write into existing data is the adjust button, which sets
+`recurring_expenses.default_amount` behind a confirmation dialog. An
+observation that cannot change anything is just a chart.
+
+A fourth decision came out of building the thing, not out of the spec.
+**Deactivating a tracked expense does not make its budget disappear.** It
+stays in Dilacak, marked "Non-aktif", so it can still be untracked by hand,
+and its spending history stays on Riwayat exactly as recorded. But it drops
+off Belanja — a retired expense has nothing live to spend against — and
+Riwayat stops offering it an adjustment — not because `default_amount` is
+gone, deactivating only flips `is_active` and the amount sits there untouched
+— but because there is no live month left for a changed figure to apply to,
+so the app declines to offer a change with nothing left to test it against.
+Deleting the row outright would have taken an already-recorded month down
+with the definition that produced it, which is the same failure mode
+decision 3 above was written to avoid.
+
+A few smaller choices are worth naming so they don't get "cleaned up" later
+by someone who didn't see why they're there:
+
+- `BudgetLine` carries both a raw `ratio` and a pre-clamped `fill`. The
+  project rule is no arithmetic in components, and a ratio past 1 is exactly
+  what a bar has to clamp before it can render — doing both in `lib/budget.ts`
+  means the bar component never has to do that math itself.
+- The capture form clears its amount by remounting `RupiahInput` under a
+  changing `key`, not `form.reset()`. A native reset cannot clear a
+  React-controlled input, and the stale figure would otherwise sit there
+  ready to be resubmitted as the next entry's amount.
+- The verdict sentence on Riwayat reads its denominator off the verdict's own
+  `months` count instead of stating one. A hardcoded fraction was tried first
+  and turned out to claim both a denominator and a consecutiveness the
+  underlying rule never actually guarantees.
+
+**Not opened by a human yet.** Same limitation as the rest of this document:
+no agent in this run could drive a browser, so nothing above has been
+click-tested against a real session. The database currently holds no tracked
+budgets at all, so the first thing a human has to do before anything else is
+testable is tick some on in Pengaturan → Dilacak. The full list of what still
+needs a real browser is in `task-10-report.md` under
+`.superpowers/sdd/2026-08-04-budget-control/`.
+
+### Two mechanisms that can now be seen to break, 2026-08-04
+
+The tests here had only ever covered pure functions, plus two components
+asserted as static markup. That is the right shape for a calculator and the
+wrong shape for the code that writes a financial record: the one Critical
+defect in this branch was a capture form that never cleared its amount, and it
+passed `tsc`, lint, the whole suite *and* the production build, because what
+was wrong about it was not its output at any one moment but what it still held
+a moment later. A human reading two files found it.
+
+Two mechanisms carry that lesson and now have tests that have been watched to
+fail. `components/spending/capture-form.test.tsx` fills the amount, submits,
+and asserts a second Catat posts `0` rather than the first entry's figure —
+with the remount key removed it posts the first figure twice, which is the
+original defect exactly. `components/form-dialog.test.tsx` opens a dialog on
+one row, closes it, reopens it on another, and asserts the second row's amount
+is what shows — with `<Fragment key={opens}>` removed it shows the first row's.
+
+Both files opt into a DOM with a `// @vitest-environment jsdom` docblock rather
+than through `vitest.config.mts`, so the ten node-environment files still spin
+up no environment at all and run in the same 430ms they did before. The only
+new dependency is `@testing-library/react`.
+
+The dialog test has to lie to jsdom about one thing, and it is worth knowing
+why. The mechanism only matters inside the exit-animation window, and jsdom
+runs no CSS, so Radix sees no animation, unmounts on close, and hands the
+fields their defaults back on its own — the test would pass with the mechanism
+deleted. So `getComputedStyle` is stubbed to report an exit animation for the
+nodes Radix drives by `data-state`, and a first assertion checks the dialog is
+still in the DOM after closing, so that if a future Radix stops suspending, the
+suite says so instead of quietly going green for the wrong reason.
+
+**What this does not cover, deliberately.** `lib/queries/` still has no tests
+at all. Every one of them talks to Supabase, and testing them honestly means
+either a live database — which no test here is allowed to write to — or a mock
+of the client deep enough that it would mostly be testing itself. Two component
+mechanisms are verified; the layer that actually reads and writes the ledger is
+not, and that gap is a stated limit rather than an oversight. Neither is any
+other component: the two here were chosen because they are the branch's most
+fragile and least observable, not because the rest were checked and cleared.

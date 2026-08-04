@@ -1,7 +1,6 @@
 'use client'
 
 import { useTransition } from 'react'
-import { Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   AlertDialog,
@@ -15,43 +14,42 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { formatRupiah } from '@/lib/format'
 import type { ActionState } from '@/lib/types'
 
-export function DeleteButton({
+/**
+ * The one place this feature writes the planner's data. Never one tap: the
+ * dialog puts the old and new figure side by side first.
+ */
+export function AdjustButton({
   id,
-  label,
-  description,
+  name,
+  from,
+  to,
   action,
 }: {
   id: string
-  label: string
-  /**
-   * What else identifies the thing being deleted, when the label alone does
-   * not. A spending row's label is its amount, and several rows in a month can
-   * carry the same one — the date and the pos are what tell them apart. Older
-   * callers name a unique record and pass nothing here.
-   */
-  description?: string
-  action: (id: string) => Promise<ActionState>
+  name: string
+  from: number
+  to: number
+  action: (id: string, amount: number) => Promise<ActionState>
 }) {
   const [pending, startTransition] = useTransition()
-  const named = description ? `${label}, ${description}` : label
 
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={`Hapus ${named}`}>
-          <Trash2 className="size-4" />
+        <Button variant="outline" size="sm">
+          Ubah jadi {formatRupiah(to)}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Hapus {label}?</AlertDialogTitle>
+          <AlertDialogTitle>Ubah budget {name}?</AlertDialogTitle>
           <AlertDialogDescription>
-            {description && (
-              <span className="text-foreground mb-1 block">{description}</span>
-            )}
-            Data yang dihapus tidak bisa dikembalikan.
+            Dari {formatRupiah(from)} jadi {formatRupiah(to)}. Ini mengubah
+            definisi pengeluaran rutin, jadi bulan-bulan berikutnya akan
+            memakai angka baru. Bulan yang sudah tercatat tidak berubah.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -60,13 +58,13 @@ export function DeleteButton({
             disabled={pending}
             onClick={() =>
               startTransition(async () => {
-                const result = await action(id)
+                const result = await action(id, to)
                 if (result && !result.ok) toast.error(result.message)
-                else toast.success('Dihapus')
+                else toast.success('Budget diubah')
               })
             }
           >
-            Hapus
+            Ubah
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

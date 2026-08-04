@@ -10,6 +10,7 @@ import {
   deleteSavingsGoal,
   setBaseSalary,
 } from '@/lib/queries/definitions'
+import { setTracked } from '@/lib/queries/spending'
 import type { ActionState, PaymentMethod } from '@/lib/types'
 
 /** Postgres error codes we can explain better than the driver does. */
@@ -166,6 +167,20 @@ export async function saveBaseSalaryAction(
 ): Promise<ActionState> {
   try {
     await setBaseSalary(num(formData, 'base_salary'))
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, message: messageFor(e, 'generic') }
+  }
+}
+
+// --- Tracked recurring expenses ---
+
+export async function toggleTrackedAction(
+  recurringExpenseId: string,
+  tracked: boolean
+): Promise<ActionState> {
+  try {
+    await setTracked(recurringExpenseId, tracked)
     return { ok: true }
   } catch (e) {
     return { ok: false, message: messageFor(e, 'generic') }

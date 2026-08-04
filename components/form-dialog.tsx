@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState, type ReactNode } from 'react'
+import { Fragment, useActionState, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import {
   Dialog,
@@ -29,6 +29,19 @@ export function FormDialog({
   children: ReactNode
 }) {
   const [open, setOpen] = useState(false)
+
+  // Every open mounts the fields fresh. Radix does unmount the dialog's
+  // children on close, which is what normally hands the fields their defaults
+  // back — but only once the close animation has finished, and `DialogContent`
+  // here animates out. Reopening inside that window keeps the old subtree
+  // alive, and `RupiahInput` holds its amount in React state, which no changed
+  // `defaultValue` can reach (the same reason `CaptureForm` clears itself by
+  // remounting through a key rather than by `form.reset()`). Without this, a
+  // dialog dismissed and reopened in one motion — or opened on a second row
+  // while the first is still fading — shows the previous amount, which on a
+  // ledger is a wrong figure presented as the row's own.
+  const [opens, setOpens] = useState(0)
+
   const [, formAction, pending] = useActionState(
     async (prev: ActionState, formData: FormData) => {
       const result = await action(prev, formData)
@@ -44,14 +57,20 @@ export function FormDialog({
   )
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (next) setOpens((n) => n + 1)
+      }}
+    >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <form action={formAction} className="space-y-4">
-          {children}
+          <Fragment key={opens}>{children}</Fragment>
           <DialogFooter>
             <Button type="submit" disabled={pending}>
               {pending ? 'Menyimpan…' : 'Simpan'}

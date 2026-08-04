@@ -807,10 +807,15 @@ export function groupUnattached(input: {
 Run: `npx vitest run lib/budget.test.ts`
 Expected: PASS, 20 tests total.
 
-- [ ] **Step 5: Run the whole suite and lint**
+- [ ] **Step 5: Run the whole suite, typecheck and lint**
 
-Run: `npm test && npm run lint`
-Expected: all test files pass (71 existing + 20 new = 91), ESLint clean.
+Run: `npx tsc --noEmit && npm test && npm run lint`
+Expected: `No errors found`, every test file passing, ESLint clean.
+
+`tsc` is not optional here and must come first. Vitest compiles tests with
+esbuild, which strips type annotations without checking them — a test file can
+be green while failing to typecheck, which is exactly what happened in Task 4
+(a type used in an annotation but never imported).
 
 - [ ] **Step 6: Commit**
 
@@ -1483,8 +1488,9 @@ import type { BudgetLine } from '@/lib/budget'
 
 export function BudgetRow({ line }: { line: BudgetLine }) {
   const over = line.over > 0
-  // Clamped so a 300% overspend does not draw a bar three screens wide.
-  const filled = line.ratio === null ? 100 : Math.min(100, line.ratio * 100)
+  // `fill` arrives already clamped from lib/budget.ts — the component does no
+  // arithmetic of its own beyond turning a fraction into a percentage string.
+  const filled = line.fill * 100
 
   return (
     <li className="space-y-1.5 py-3">

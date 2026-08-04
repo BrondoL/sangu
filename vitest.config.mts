@@ -6,8 +6,11 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'node',
-    // Components are render-only, so the few that are worth testing can be
-    // asserted as markup — no DOM environment needed.
+    // Node by default: most components are render-only and can be asserted as
+    // markup, which needs no DOM and costs nothing to start. The two files
+    // that test behaviour across time rather than output at one moment ask for
+    // a DOM themselves, with a `// @vitest-environment jsdom` docblock, so
+    // they pay for it alone.
     include: ['lib/**/*.test.ts', 'components/**/*.test.tsx'],
   },
   resolve: { alias: { '@': fileURLToPath(new URL('.', import.meta.url)) } },

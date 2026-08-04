@@ -60,8 +60,9 @@ lib/
   goals.ts          proyeksi target tabungan (murni, teruji)
   terbilang.ts      angka ke kata dalam Bahasa Indonesia (murni, teruji)
   month.ts          aritmetika bulan tanpa objek Date (murni, teruji)
+  budget.ts         budget vs realisasi + saran setel ulang (murni, teruji)
   queries/          akses Supabase, satu file per domain
-app/(app)/          dashboard · bulan ini · target · pengaturan
+app/(app)/          dashboard · bulan ini · belanja · target · pengaturan
 supabase/migrations/
 ```
 
