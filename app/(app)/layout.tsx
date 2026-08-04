@@ -9,10 +9,11 @@ export default async function AppLayout({
   children: React.ReactNode
 }) {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  // Local JWT verification, same as the proxy — see lib/supabase/proxy.ts. The
+  // proxy already gate-keeps this route, but a layout that trusts it blindly
+  // would be one misconfigured matcher away from serving the page to anyone.
+  const { data: claims } = await supabase.auth.getClaims()
+  if (!claims) redirect('/login')
 
   return (
     <>
