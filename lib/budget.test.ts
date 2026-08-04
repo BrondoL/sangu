@@ -104,3 +104,63 @@ describe('summarizeBudgetMonth', () => {
     expect(untouched.lines.find((l) => l.id === 'reward')!.fill).toBe(0)
   })
 })
+
+import { compareAcrossMonths } from './budget'
+
+describe('compareAcrossMonths', () => {
+  const budgets = [{ id: 'jajan', name: 'Jajan' }]
+  const months = ['2026-05', '2026-06', '2026-07', '2026-08']
+
+  it('marks a month that was never snapshotted as a gap, not a zero', () => {
+    const [series] = compareAcrossMonths({
+      budgets,
+      snapshots: [
+        { recurringExpenseId: 'jajan', month: '2026-05', amount: 1_750_000 },
+        { recurringExpenseId: 'jajan', month: '2026-07', amount: 1_750_000 },
+      ],
+      spending: [{ recurringExpenseId: 'jajan', month: '2026-05', amount: 1_800_000 }],
+      months,
+    })
+    expect(series.points.map((p) => p.budget)).toEqual([
+      1_750_000,
+      null,
+      1_750_000,
+      null,
+    ])
+    expect(series.points[1].spent).toBe(0)
+  })
+
+  it('holds the budget that applied then, not the one that applies now', () => {
+    const [series] = compareAcrossMonths({
+      budgets,
+      snapshots: [
+        { recurringExpenseId: 'jajan', month: '2026-07', amount: 1_750_000 },
+        { recurringExpenseId: 'jajan', month: '2026-08', amount: 2_000_000 },
+      ],
+      spending: [],
+      months,
+    })
+    expect(series.points[2].budget).toBe(1_750_000)
+    expect(series.points[3].budget).toBe(2_000_000)
+  })
+
+  it('sums spending per month and keeps months oldest first', () => {
+    const [series] = compareAcrossMonths({
+      budgets,
+      snapshots: months.map((month) => ({
+        recurringExpenseId: 'jajan',
+        month,
+        amount: 1_750_000,
+      })),
+      spending: [
+        { recurringExpenseId: 'jajan', month: '2026-08', amount: 100_000 },
+        { recurringExpenseId: 'jajan', month: '2026-08', amount: 40_000 },
+        { recurringExpenseId: 'jajan', month: '2026-05', amount: 900_000 },
+        { recurringExpenseId: null, month: '2026-08', amount: 500_000 },
+      ],
+      months,
+    })
+    expect(series.points.map((p) => p.month)).toEqual(months)
+    expect(series.points.map((p) => p.spent)).toEqual([900_000, 0, 0, 140_000])
+  })
+})

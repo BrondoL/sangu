@@ -71,3 +71,46 @@ export function summarizeBudgetMonth(input: {
     totalSpent: lines.reduce((t, l) => t + l.spent, 0) + unattachedTotal,
   }
 }
+
+export interface MonthPoint {
+  month: string
+  /** null means no snapshot was taken — the month is a gap, not a zero. */
+  budget: number | null
+  spent: number
+}
+
+export interface BudgetSeries {
+  id: string
+  name: string
+  points: MonthPoint[]
+}
+
+export function compareAcrossMonths(input: {
+  budgets: { id: string; name: string }[]
+  snapshots: { recurringExpenseId: string; month: string; amount: number }[]
+  spending: { recurringExpenseId: string | null; month: string; amount: number }[]
+  months: string[]
+}): BudgetSeries[] {
+  const key = (id: string, month: string) => `${id} ${month}`
+
+  const budgetAt = new Map(
+    input.snapshots.map((s) => [key(s.recurringExpenseId, s.month), s.amount])
+  )
+
+  const spentAt = new Map<string, number>()
+  for (const s of input.spending) {
+    if (s.recurringExpenseId === null) continue
+    const k = key(s.recurringExpenseId, s.month)
+    spentAt.set(k, (spentAt.get(k) ?? 0) + s.amount)
+  }
+
+  return input.budgets.map((b) => ({
+    id: b.id,
+    name: b.name,
+    points: input.months.map((month) => ({
+      month,
+      budget: budgetAt.get(key(b.id, month)) ?? null,
+      spent: spentAt.get(key(b.id, month)) ?? 0,
+    })),
+  }))
+}
