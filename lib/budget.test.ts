@@ -375,6 +375,108 @@ describe('suggestAdjustment', () => {
     )
     expect(a).toEqual({ kind: 'ok' })
   })
+
+  it('does not grade the month still being lived', () => {
+    // Two days into August: 40.000 of a 1.000.000 budget, against three full
+    // months that each landed comfortably inside it.
+    const points: [string, number | null, number][] = [
+      ['2026-05', 1_000_000, 590_000],
+      ['2026-06', 1_000_000, 580_000],
+      ['2026-07', 1_000_000, 560_000],
+      ['2026-08', 1_000_000, 40_000],
+    ]
+    // Counting August, the part-month is the fourth vote for lowering and it
+    // also pulls the median under every full month's spend.
+    expect(suggestAdjustment(series(points))).toEqual({
+      kind: 'lower',
+      amount: 570_000,
+      months: 4,
+    })
+    // Excluded, only the three finished months are read. They are all under
+    // 60%, but three is not the four 'lower' needs, and the budget is running
+    // fine — so nothing is offered.
+    expect(suggestAdjustment(series(points), '2026-08')).toEqual({ kind: 'ok' })
+  })
+
+  it('lets an accepted suggestion retire instead of immediately offering another', () => {
+    // August has not been opened yet, so it carries no snapshot.
+    const before: [string, number | null, number][] = [
+      ['2026-04', 1_000_000, 5_000_000],
+      ['2026-05', 1_000_000, 1_100_000],
+      ['2026-06', 1_000_000, 1_200_000],
+      ['2026-07', 1_000_000, 1_300_000],
+      ['2026-08', null, 0],
+    ]
+    expect(suggestAdjustment(series(before), '2026-08')).toEqual({
+      kind: 'raise',
+      amount: 1_250_000,
+      months: 4,
+    })
+
+    // Accepting writes 1.250.000 into the definition and into August's
+    // snapshot, which is the month still being lived.
+    const after: [string, number | null, number][] = [
+      ...before.slice(0, 4),
+      ['2026-08', 1_250_000, 0],
+    ]
+    expect(suggestAdjustment(series(after), '2026-08')).toEqual({ kind: 'ok' })
+
+    // Without the exclusion the accept never lands: August joins the window and
+    // shifts it off April, so the median falls to 1.150.000 while May, June and
+    // July are still over — a smaller figure offered as a raise, one tap after
+    // the larger one was accepted.
+    expect(suggestAdjustment(series(after))).toEqual({
+      kind: 'raise',
+      amount: 1_150_000,
+      months: 4,
+    })
+  })
+
+  it('leaves the excluded month in the series the caller renders', () => {
+    // The history table shows six months; only the grading window is narrower.
+    const s = series([
+      ['2026-05', 1_000_000, 590_000],
+      ['2026-06', 1_000_000, 580_000],
+      ['2026-07', 1_000_000, 560_000],
+      ['2026-08', 1_000_000, 40_000],
+    ])
+    suggestAdjustment(s, '2026-08')
+    expect(s.points.map((p) => p.month)).toEqual([
+      '2026-05',
+      '2026-06',
+      '2026-07',
+      '2026-08',
+    ])
+    expect(s.points[3]).toEqual({ month: '2026-08', budget: 1_000_000, spent: 40_000 })
+  })
+
+  it('grades the same way when no month is excluded or the named month is absent', () => {
+    const points: [string, number | null, number][] = [
+      ['2026-05', 1_750_000, 1_800_000],
+      ['2026-06', 1_750_000, 1_950_000],
+      ['2026-07', 1_750_000, 1_760_000],
+      ['2026-08', 1_750_000, 1_900_000],
+    ]
+    const omitted = suggestAdjustment(series(points))
+    // A month outside the window names nothing, so it removes nothing.
+    const absent = suggestAdjustment(series(points), '2026-01')
+    expect(omitted).toEqual({ kind: 'raise', amount: 1_850_000, months: 4 })
+    expect(absent).toEqual(omitted)
+  })
+
+  it('stays silent when excluding the month in progress leaves thin evidence', () => {
+    // Three recorded months, one of them the one being lived. Two finished
+    // months is not enough to rule on a budget, so it does not rule.
+    const a = suggestAdjustment(
+      series([
+        ['2026-06', 1_000_000, 1_200_000],
+        ['2026-07', 1_000_000, 1_300_000],
+        ['2026-08', 1_000_000, 1_400_000],
+      ]),
+      '2026-08'
+    )
+    expect(a).toEqual({ kind: 'ok' })
+  })
 })
 
 import { groupUnattached } from './budget'

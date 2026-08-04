@@ -165,11 +165,31 @@ function roundUpTo(n: number, step: number): number {
  * Deliberately dull, and stated on screen next to the verdict. A suggestion you
  * cannot check is a suggestion you cannot trust, and this one changes a real
  * number in the budget.
+ *
+ * `excludeMonth` names a month that must not be graded — in practice the month
+ * still being lived. A month you are two days into is not evidence about a
+ * budget: its spend is a fraction of what the month will cost, so counting it
+ * drags the median down and can report a budget that is running perfectly well
+ * as consistently under-used. It also breaks the accept loop. Accepting a
+ * suggestion writes the current month's snapshot, and if that month had none
+ * before, an ungraded window would gain a month and shift by one — producing a
+ * different median and a fresh verdict the instant the old one was accepted.
+ *
+ * Excluded from *grading* only. The excluded month still holds the budget in
+ * force, and that is the figure a change would replace, so it is what the
+ * suggestion is checked against below. Dropping it from that check too would
+ * break the accept loop from the other side: the last graded month is a past
+ * month, whose snapshot accepting never touches, so the row would go on
+ * offering a change that has already been made.
  */
-export function suggestAdjustment(series: BudgetSeries): Adjustment {
-  const graded = series.points.filter(
+export function suggestAdjustment(
+  series: BudgetSeries,
+  excludeMonth?: string
+): Adjustment {
+  const recorded = series.points.filter(
     (p): p is MonthPoint & { budget: number } => p.budget !== null && p.budget > 0
   )
+  const graded = recorded.filter((p) => p.month !== excludeMonth)
   const recent = graded.slice(-4)
   if (recent.length < 3) return { kind: 'ok' }
 
@@ -178,7 +198,13 @@ export function suggestAdjustment(series: BudgetSeries): Adjustment {
   // action that writes it rejects a non-positive amount, so offering it would
   // be a button that only ever fails. Months with nothing logged land here.
   if (suggestion <= 0) return { kind: 'ok' }
-  if (suggestion === recent[recent.length - 1].budget) return { kind: 'ok' }
+  // The budget the button would replace: the excluded month's snapshot when
+  // there is one, otherwise the newest graded month. With no month excluded
+  // these are the same point, so nothing moves.
+  const inForce =
+    recorded.find((p) => p.month === excludeMonth)?.budget ??
+    recent[recent.length - 1].budget
+  if (suggestion === inForce) return { kind: 'ok' }
 
   const over = recent.filter((p) => p.spent > p.budget).length
   if (over >= 3) return { kind: 'raise', amount: suggestion, months: recent.length }

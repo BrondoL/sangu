@@ -61,7 +61,11 @@ export default async function SpendingHistoryPage() {
                 <SeriesRow
                   key={s.id}
                   series={s}
-                  adjustment={suggestAdjustment(s)}
+                  // The table below still draws all six months, this one
+                  // included. Only the verdict skips it: a month still being
+                  // lived is a part-month, and grading it both distorts the
+                  // median and stops an accepted suggestion from retiring.
+                  adjustment={suggestAdjustment(s, current)}
                   currentBudget={budgetById.get(s.id) ?? 0}
                   isActive={activeById.get(s.id) ?? true}
                   action={applyAdjustmentAction}

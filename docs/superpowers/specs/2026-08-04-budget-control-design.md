@@ -128,7 +128,9 @@ Accepting an adjustment writes the new amount into the current month's row too,
 upserting it. That month is still being lived, so the budget that applies to it
 is the one just chosen; without this the page would show the new figure in the
 header and the old one in the month, and the verdict would go on offering the
-change that was already accepted. Past months are never rewritten. **The write must ship in stage 1, and so must the read** — stage
+change that was already accepted. That row is also what stage 2 checks its
+suggestion against, which is what retires the verdict — the month is not
+graded, but it is the budget in force. Past months are never rewritten. **The write must ship in stage 1, and so must the read** — stage
 1 itself reads the snapshot back, so the month you're looking at shows the
 budget that applied then rather than whatever `default_amount` holds today,
 and stage 2 reads the same table to draw its comparison across months. Only
@@ -212,10 +214,23 @@ Route `app/(app)/spending/riwayat/`.
 Per tracked budget, the last six months of budget against actual, drawn from
 `budget_months` (not from today's `default_amount`), with a verdict:
 
-The window the rule reads is the last four months that carry a snapshot with a
-budget above zero. Those four are the last four *recorded* months, not the last
-four calendar months — a gap in the middle is skipped over, not counted as
-anything. Fewer than three recorded months and no verdict is given at all.
+**The month in progress is not graded.** A month you are two days into has
+spent a fraction of what it will cost, and reading that as a month's behaviour
+is how a budget running perfectly well gets reported as consistently
+under-used: 1.000.000 against 590.000, 580.000, 560.000 and then 40.000 on the
+2nd gives a median of 570.000 and four months "at or under 60%". It breaks the
+accept loop too — accepting writes the current month's snapshot, so a month
+that had none joins the graded window and shifts it by one, producing a fresh
+verdict the instant the old one was accepted. The current month still appears
+in the table; it just does not vote.
+
+The window the rule reads is the last four *finished* months that carry a
+snapshot with a budget above zero. Those four are the last four recorded
+months, not the last four calendar months — a gap in the middle is skipped
+over, not counted as anything. With the month in progress set aside, the
+six-month view offers five gradable months. Fewer than three recorded months
+and no verdict is given at all: a user three months in, one of them the one
+being lived, is ruled on by nothing.
 
 - **Consistently over** — over budget in at least three of those four months.
 - **Consistently under** — 60% or less of the budget used, with something
@@ -226,7 +241,13 @@ anything. Fewer than three recorded months and no verdict is given at all.
 Both suggest the same figure: the median of the actual spend across all four
 months, rounded up to the nearest 10.000 — all four, not only the months that
 triggered the verdict. Nothing is suggested when that figure works out to zero
-or less, or when it equals the budget already set.
+or less, or when it equals the budget already in force.
+
+"In force" is the current month's snapshot — the month that is not graded still
+holds the budget a change would replace, and that is the comparison that lets
+an accepted suggestion retire. Checking against the newest *graded* month
+instead would check against a past month, whose snapshot accepting never
+touches, and the row would go on offering a change already made.
 
 The rule is deliberately dull and stated on screen next to each verdict. A
 suggestion you cannot check is a suggestion you cannot trust, and this one
@@ -266,8 +287,11 @@ it pure and tested in `lib/`.
   budget nobody recorded are different claims and stay distinguishable.
 - `compareAcrossMonths(snapshots, spending, months)` → per budget, a series with
   explicit gaps for months that were never snapshotted.
-- `suggestAdjustment(series)` → `{ kind: 'raise' | 'lower' | 'ok', amount }`
-  implementing the rule above.
+- `suggestAdjustment(series, excludeMonth?)` → `{ kind: 'raise' | 'lower' |
+  'ok', amount }` implementing the rule above. `excludeMonth` names a month to
+  keep out of the grading — the page passes the current one. Excluded from
+  grading only: that month's snapshot is still what the suggestion is compared
+  against.
 - `groupUnattached(spending, months)` → recurring notes and their monthly totals.
 
 Each gets a test file alongside, as `calculations`, `generate`, `goals`,
