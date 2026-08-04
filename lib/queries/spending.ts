@@ -96,7 +96,12 @@ export async function getSpendingForMonth(month: string) {
     .select('*')
     .gte('occurred_on', toIsoMonth(month))
     .lt('occurred_on', toIsoMonth(shiftMonth(month, 1)))
+    // Several entries a day is the normal case here, and `occurred_on` alone
+    // leaves those ties in whatever order Postgres happens to return, so the
+    // list reshuffles between renders. created_at breaks the tie the way the
+    // user experienced it: newest entry of the day on top.
     .order('occurred_on', { ascending: false })
+    .order('created_at', { ascending: false })
   if (error) throw error
   return data ?? []
 }
