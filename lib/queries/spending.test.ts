@@ -29,7 +29,7 @@ vi.mock('@/lib/supabase/server', () => {
   return { createClient: async () => ({ from: () => query }) }
 })
 
-const { listNotes } = await import('./spending')
+const { listNotes, listTrackedBudgets } = await import('./spending')
 
 /** The rows as the query returns them: newest first. */
 function given(...notes: (string | null)[]) {
@@ -61,5 +61,72 @@ describe('the notes offered under the note field', () => {
     given('  Kopi  ', '', '   ', null)
 
     expect(await listNotes()).toEqual(['Kopi'])
+  })
+})
+
+describe('the budgets the Belanja page follows', () => {
+  type Row = {
+    recurring_expenses: {
+      id: string
+      name: string
+      default_amount: number
+      is_active: boolean
+    } | null
+  }
+
+  function budgets(...names: string[]) {
+    rows.current = names.map((name) => ({
+      recurring_expenses: {
+        id: name.toLowerCase(),
+        name,
+        default_amount: 0,
+        is_active: true,
+      },
+    })) as unknown as typeof rows.current
+  }
+
+  it('comes back in the same order however the database returned it', async () => {
+    // The rows used to be ordered by tracked_budgets.sort_order, which nothing
+    // writes — every row is 0, and Postgres guarantees no order at all when the
+    // key ties. The Pos dropdown could rearrange itself between loads, and a
+    // dropdown that moves under your thumb files money under the wrong pos.
+    budgets('Parkir', 'Jajan', 'Makan', 'Bensin')
+    expect((await listTrackedBudgets()).map((b) => b.name)).toEqual([
+      'Bensin',
+      'Jajan',
+      'Makan',
+      'Parkir',
+    ])
+
+    budgets('Makan', 'Bensin', 'Parkir', 'Jajan')
+    expect((await listTrackedBudgets()).map((b) => b.name)).toEqual([
+      'Bensin',
+      'Jajan',
+      'Makan',
+      'Parkir',
+    ])
+  })
+
+  it('drops a row whose definition has been deleted', async () => {
+    rows.current = [
+      { recurring_expenses: null },
+      {
+        recurring_expenses: {
+          id: 'jajan',
+          name: 'Jajan',
+          default_amount: 1_750_000,
+          is_active: true,
+        },
+      },
+    ] as unknown as typeof rows.current
+
+    const list = await listTrackedBudgets()
+    expect(list).toHaveLength(1)
+    expect(list[0]).toEqual({
+      id: 'jajan',
+      name: 'Jajan',
+      amount: 1_750_000,
+      isActive: true,
+    })
   })
 })

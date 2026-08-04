@@ -14,13 +14,27 @@ function revalidateSpending() {
   revalidatePath('/spending/riwayat')
 }
 
-/** The budgets followed here, with the amount their definition carries now. */
+/**
+ * The budgets followed here, with the amount their definition carries now.
+ *
+ * Ordered by name, like the Dilacak tab that chooses them. It used to order by
+ * `tracked_budgets.sort_order`, which nothing ever writes — every row sits at
+ * 0, and Postgres promises no order at all when the sort key ties, so the list
+ * and the Pos dropdown could come back in a different order on any load. On a
+ * control tapped several times a day that is not cosmetic: a moving dropdown
+ * is a mis-tap, and a mis-tap files the money under the wrong pos.
+ *
+ * Sorted here rather than in the query. Ordering a parent by a column of an
+ * embedded table is a corner of PostgREST that could not be proven from this
+ * machine — RLS returns nothing to the anon role, so the rows that would show
+ * the order never arrive. A handful of budgets sorts for free in memory, and
+ * this way the guarantee has a test.
+ */
 export async function listTrackedBudgets() {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('tracked_budgets')
-    .select('sort_order, recurring_expenses(id, name, default_amount, is_active)')
-    .order('sort_order')
+    .select('recurring_expenses(id, name, default_amount, is_active)')
   if (error) throw error
 
   return (data ?? [])
@@ -31,6 +45,7 @@ export async function listTrackedBudgets() {
       amount: r.recurring_expenses!.default_amount,
       isActive: r.recurring_expenses!.is_active,
     }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'id'))
 }
 
 /** Every active recurring expense, flagged with whether it is tracked. */
