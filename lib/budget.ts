@@ -158,3 +158,53 @@ export function suggestAdjustment(series: BudgetSeries): Adjustment {
 
   return { kind: 'ok' }
 }
+
+export interface NoteGroup {
+  note: string
+  months: number
+  total: number
+  perMonth: { month: string; total: number }[]
+}
+
+const MIN_MONTHS = 3
+
+/**
+ * Unattached spending that keeps coming back under the same note is a budget
+ * that does not exist yet. Case and padding are ignored so "laundry" and
+ * "Laundry" meet; nothing here can make "laundry" meet "cuci baju", which is
+ * why the capture form suggests notes already used.
+ */
+export function groupUnattached(input: {
+  spending: { month: string; note: string | null; amount: number }[]
+  minMonths?: number
+}): NoteGroup[] {
+  const minMonths = input.minMonths ?? MIN_MONTHS
+  const groups = new Map<
+    string,
+    { note: string; byMonth: Map<string, number> }
+  >()
+
+  for (const s of input.spending) {
+    const label = (s.note ?? '').trim()
+    if (label === '') continue
+    const k = label.toLowerCase()
+    const g = groups.get(k) ?? { note: label, byMonth: new Map() }
+    g.byMonth.set(s.month, (g.byMonth.get(s.month) ?? 0) + s.amount)
+    groups.set(k, g)
+  }
+
+  return [...groups.values()]
+    .filter((g) => g.byMonth.size >= minMonths)
+    .map((g) => {
+      const perMonth = [...g.byMonth.entries()]
+        .map(([month, total]) => ({ month, total }))
+        .sort((a, b) => a.month.localeCompare(b.month))
+      return {
+        note: g.note,
+        months: perMonth.length,
+        total: perMonth.reduce((t, m) => t + m.total, 0),
+        perMonth,
+      }
+    })
+    .sort((a, b) => b.total - a.total)
+}

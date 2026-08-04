@@ -278,3 +278,69 @@ describe('suggestAdjustment', () => {
     expect(a).toEqual({ kind: 'ok' })
   })
 })
+
+import { groupUnattached } from './budget'
+
+describe('groupUnattached', () => {
+  it('groups a note that recurs across three months', () => {
+    const groups = groupUnattached({
+      spending: [
+        { month: '2026-06', note: 'Laundry', amount: 45_000 },
+        { month: '2026-07', note: 'laundry', amount: 50_000 },
+        { month: '2026-08', note: '  Laundry  ', amount: 55_000 },
+      ],
+    })
+    expect(groups).toHaveLength(1)
+    expect(groups[0].note).toBe('Laundry')
+    expect(groups[0].months).toBe(3)
+    expect(groups[0].total).toBe(150_000)
+    expect(groups[0].perMonth).toEqual([
+      { month: '2026-06', total: 45_000 },
+      { month: '2026-07', total: 50_000 },
+      { month: '2026-08', total: 55_000 },
+    ])
+  })
+
+  it('drops a note that has not recurred in enough months', () => {
+    const groups = groupUnattached({
+      spending: [
+        { month: '2026-07', note: 'Servis kipas', amount: 122_000 },
+        { month: '2026-08', note: 'Servis kipas', amount: 90_000 },
+      ],
+    })
+    expect(groups).toEqual([])
+  })
+
+  it('counts months, not entries', () => {
+    const groups = groupUnattached({
+      spending: [
+        { month: '2026-08', note: 'Parkir', amount: 5_000 },
+        { month: '2026-08', note: 'Parkir', amount: 5_000 },
+        { month: '2026-08', note: 'Parkir', amount: 5_000 },
+      ],
+    })
+    expect(groups).toEqual([])
+  })
+
+  it('skips entries with no note at all', () => {
+    const groups = groupUnattached({
+      spending: [
+        { month: '2026-06', note: null, amount: 10_000 },
+        { month: '2026-07', note: '   ', amount: 10_000 },
+        { month: '2026-08', note: '', amount: 10_000 },
+      ],
+    })
+    expect(groups).toEqual([])
+  })
+
+  it('sorts the biggest total first', () => {
+    const months = ['2026-06', '2026-07', '2026-08']
+    const groups = groupUnattached({
+      spending: [
+        ...months.map((month) => ({ month, note: 'Laundry', amount: 50_000 })),
+        ...months.map((month) => ({ month, note: 'Galon', amount: 120_000 })),
+      ],
+    })
+    expect(groups.map((g) => g.note)).toEqual(['Galon', 'Laundry'])
+  })
+})
