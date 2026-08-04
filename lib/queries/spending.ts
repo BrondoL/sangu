@@ -118,19 +118,34 @@ export async function getSpendingForMonth(month: string) {
  * case-insensitive, and the spelling kept is the most recent one, so correcting
  * "laundry" to "Laundry" is what shows from then on. Still a plain `string[]`;
  * the count is a ranking, not something the field is asked to render.
+ *
+ * The window is six months, the same span the riwayat page compares over, so
+ * both features remember the same distance back. It was a cap of 200 rows,
+ * which made how far the app remembers depend on how much you spend — a busy
+ * month shortened its memory and a quiet one lengthened it, and the rule could
+ * not be stated without saying "it depends". Habits do move, so some window is
+ * right; it should just be one made of time.
  */
+const NOTE_WINDOW_MONTHS = 6
+
 export async function listNotes() {
   const supabase = await createClient()
+  const from = toIsoMonth(
+    shiftMonth(currentMonthParam(), -(NOTE_WINDOW_MONTHS - 1))
+  )
+
   const { data, error } = await supabase
     .from('spending')
     .select('note')
     .not('note', 'is', null)
-    .order('created_at', { ascending: false })
-    .limit(200)
+    .gte('occurred_on', from)
+    .order('occurred_on', { ascending: false })
   if (error) throw error
 
-  // `rank` is the position in the newest-first rows, so the smaller it is the
-  // more recently that note was used.
+  // `rank` is the position in the rows ordered by the date the money was spent,
+  // newest first — so the smaller it is, the more recently that note was used.
+  // The date on the entry, not the moment it was typed: a purchase backdated
+  // into last week belongs where it happened.
   const counted = new Map<string, { label: string; count: number; rank: number }>()
   ;(data ?? []).forEach((r, rank) => {
     const label = (r.note ?? '').trim()

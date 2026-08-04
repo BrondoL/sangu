@@ -8,14 +8,23 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 const rows = vi.hoisted(() => ({ current: [] as { note: string | null }[] }))
 
 vi.mock('@/lib/supabase/server', () => {
-  // The read `listNotes` makes, as a chain that ends in the rows: from →
-  // select → not → order → limit. Every link returns the same object, so the
-  // order of the calls is not what this asserts — the ranking is.
+  // Every link returns the same object, so which links are called and in what
+  // order is not what this asserts — the ranking is.
+  //
+  // The object is thenable rather than resolving from one named terminal link.
+  // An earlier version ended at `limit`, and adding a date filter to the query
+  // broke all four tests with "gte is not a function" — a failure about the
+  // stub's shape, not about anything these tests are for. Awaiting the chain
+  // now works wherever it happens to end.
   const query = {
     select: () => query,
     not: () => query,
+    gte: () => query,
+    lt: () => query,
     order: () => query,
-    limit: async () => ({ data: rows.current, error: null }),
+    limit: () => query,
+    then: (resolve: (r: { data: typeof rows.current; error: null }) => void) =>
+      resolve({ data: rows.current, error: null }),
   }
   return { createClient: async () => ({ from: () => query }) }
 })
