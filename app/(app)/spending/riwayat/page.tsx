@@ -31,6 +31,7 @@ export default async function SpendingHistoryPage() {
   })
 
   const budgetById = new Map(budgets.map((b) => [b.id, b.amount]))
+  const activeById = new Map(budgets.map((b) => [b.id, b.isActive]))
   const newBudgets = groupUnattached({
     spending: spending
       .filter((s) => s.recurringExpenseId === null)
@@ -62,6 +63,7 @@ export default async function SpendingHistoryPage() {
                   series={s}
                   adjustment={suggestAdjustment(s)}
                   currentBudget={budgetById.get(s.id) ?? 0}
+                  isActive={activeById.get(s.id) ?? true}
                   action={applyAdjustmentAction}
                 />
               ))}
