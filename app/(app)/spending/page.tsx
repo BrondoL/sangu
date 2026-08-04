@@ -6,11 +6,13 @@ import { Eyebrow, PageHeader } from '@/components/kwitansi'
 import { DeleteButton } from '@/components/delete-button'
 import { CaptureForm } from '@/components/spending/capture-form'
 import { BudgetRow } from '@/components/spending/budget-row'
+import { EditDialog } from '@/components/spending/edit-dialog'
 import {
   listBudgetsForMonth,
   ensureBudgetSnapshots,
   getSpendingForMonth,
   listNotes,
+  listAllRecurringWithTracking,
 } from '@/lib/queries/spending'
 import { summarizeBudgetMonth } from '@/lib/budget'
 import {
@@ -22,7 +24,11 @@ import {
   formatDateLabel,
 } from '@/lib/month'
 import { formatRupiah } from '@/lib/format'
-import { addSpendingAction, deleteSpendingAction } from './actions'
+import {
+  addSpendingAction,
+  updateSpendingAction,
+  deleteSpendingAction,
+} from './actions'
 
 export default async function SpendingPage({
   searchParams,
@@ -45,9 +51,12 @@ export default async function SpendingPage({
   if (isCurrentMonth) await ensureBudgetSnapshots(month)
   const budgets = await listBudgetsForMonth(month)
 
-  const [spending, notes] = await Promise.all([
+  const [spending, notes, allRecurring] = await Promise.all([
     getSpendingForMonth(month),
     listNotes(),
+    // Only so the edit dialog can name a pos that is no longer on the page —
+    // see `posOptions` below. Nothing on screen is drawn from this list.
+    listAllRecurringWithTracking(),
   ])
 
   const summary = summarizeBudgetMonth({
@@ -59,13 +68,44 @@ export default async function SpendingPage({
   })
 
   // Every row on screen, not only the unattached ones: a row that is not listed
-  // is a row that can never be deleted, and this ledger has no edit path. A
-  // budget that is no longer tracked has no name to show, so its spending reads
-  // as tak terduga — matching where summarizeBudgetMonth now counts it.
+  // is a row that can never be corrected or deleted. A budget that is no longer
+  // tracked has no name to show, so its spending reads as tak terduga —
+  // matching where summarizeBudgetMonth now counts it.
   const budgetName = new Map(budgets.map((b) => [b.id, b.name]))
   const label = (recurringExpenseId: string | null) =>
     (recurringExpenseId === null ? null : budgetName.get(recurringExpenseId)) ??
     'Tak terduga'
+
+  // What tells one irreversible edit or delete from another: several rows in a
+  // month can carry the same amount, and the date, the pos and the note are
+  // what say which one is being opened.
+  const describe = (s: (typeof spending)[number]) =>
+    `${formatDateLabel(s.occurred_on)} · ${label(s.recurring_expense_id)}${
+      s.note ? ` · ${s.note}` : ''
+    }`
+
+  // A row filed against a budget that is untracked or retired still has to be
+  // editable without being refiled: the select needs its current pos in it,
+  // named, even though the list shows the row as tak terduga and no budget line
+  // above claims it. The suffix says why it is not one of the others — leaving
+  // it unmarked would read as an ordinary tracked pos and invite filing more
+  // spending into a budget this page does not follow.
+  const otherName = new Map(
+    allRecurring.map((r) => [
+      r.id,
+      `${r.name} (${r.tracked ? 'non-aktif' : 'tidak dilacak'})`,
+    ])
+  )
+  const posOptions = (recurringExpenseId: string | null) =>
+    recurringExpenseId === null || budgetName.has(recurringExpenseId)
+      ? budgets
+      : [
+          ...budgets,
+          {
+            id: recurringExpenseId,
+            name: otherName.get(recurringExpenseId) ?? 'Pos lain',
+          },
+        ]
 
   return (
     <div className="space-y-4">
@@ -152,19 +192,30 @@ export default async function SpendingPage({
                     )}
                   </span>
                   <span className="amount text-sm">{formatRupiah(s.amount)}</span>
-                  {/* The dialog names the entry, not a budget. Passing the
+                  {/* Both dialogs name the entry, not a budget. Passing the
                       note-or-pos alone produced "Hapus Jajan?" on any attached
                       row without a note — and "Jajan" is also a budget row a
                       few centimetres up the page. The amount and the date are
-                      what identify one irreversible delete from another. */}
-                  <DeleteButton
-                    id={s.id}
-                    label={formatRupiah(s.amount)}
-                    description={`${formatDateLabel(s.occurred_on)} · ${label(
-                      s.recurring_expense_id
-                    )}${s.note ? ` · ${s.note}` : ''}`}
-                    action={deleteSpendingAction}
-                  />
+                      what identify one irreversible delete from another.
+
+                      The two controls sit in one group, pulled back to the
+                      card edge, so the pair reads as this row's controls
+                      rather than as two things pushing at the amount. */}
+                  <span className="-mr-2 flex shrink-0 items-center">
+                    <EditDialog
+                      entry={s}
+                      budgets={posOptions(s.recurring_expense_id)}
+                      notes={notes}
+                      description={describe(s)}
+                      action={updateSpendingAction}
+                    />
+                    <DeleteButton
+                      id={s.id}
+                      label={formatRupiah(s.amount)}
+                      description={describe(s)}
+                      action={deleteSpendingAction}
+                    />
+                  </span>
                 </li>
               ))}
             </ul>
