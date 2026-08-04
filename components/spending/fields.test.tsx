@@ -7,7 +7,7 @@
 // as tak terduga. So this file submits the form and reads the FormData the
 // action was actually handed.
 import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest'
-import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent, act, within } from '@testing-library/react'
 import { CaptureForm } from './capture-form'
 import { TAK_TERDUGA } from '@/lib/pos'
 import type { ActionState } from '@/lib/types'
@@ -32,7 +32,7 @@ const budgets = [
 ]
 
 /** Every FormData the action receives, in order. */
-function setUp() {
+function setUp(notes: string[] = []) {
   const posted: FormData[] = []
   const action = vi.fn(async (_prev: ActionState, fd: FormData): Promise<ActionState> => {
     posted.push(fd)
@@ -41,7 +41,7 @@ function setUp() {
   render(
     <CaptureForm
       budgets={budgets}
-      notes={[]}
+      notes={notes}
       defaultDate="2026-08-04"
       action={action}
     />
@@ -105,5 +105,88 @@ describe('the pos the capture form submits', () => {
       'jajan',
       TAK_TERDUGA,
     ])
+  })
+})
+
+/** The note field. */
+const note = () => screen.getByLabelText('Catatan') as HTMLInputElement
+
+/**
+ * The suggestion chips, in the order they are shown — or none at all, which is
+ * a state of its own: the row is not rendered rather than rendered empty.
+ */
+function suggestions() {
+  const row = screen.queryByRole('group', { name: 'Catatan yang sering dipakai' })
+  return row === null ? [] : within(row).getAllByRole('button').map((b) => b.textContent)
+}
+
+/** Type into the note field, as a keystroke does. */
+function type(text: string) {
+  fireEvent.change(note(), { target: { value: text } })
+}
+
+const saved = ['Laundry', 'Bensin', 'Beli galon', 'Kopi']
+
+describe('the note suggestions', () => {
+  it('offers them in the order the query ranked them', () => {
+    setUp(saved)
+    expect(suggestions()).toEqual(saved)
+  })
+
+  it('narrows to what has been typed, ignoring case', () => {
+    setUp(saved)
+
+    type('la')
+
+    expect(suggestions()).toEqual(['Laundry'])
+  })
+
+  it('matches anywhere in the note, not only at its start', () => {
+    // "Beli galon" is only reachable by its second word.
+    setUp(saved)
+
+    type('galon')
+
+    expect(suggestions()).toEqual(['Beli galon'])
+  })
+
+  it('shows nothing at all when nothing matches', () => {
+    setUp(saved)
+
+    type('zzz')
+
+    expect(suggestions()).toEqual([])
+    // Not an empty row and not a message — the field stands alone, the way it
+    // does before any note has been saved.
+    expect(
+      screen.queryByRole('group', { name: 'Catatan yang sering dipakai' })
+    ).toBeNull()
+  })
+
+  it('caps the untyped row so it cannot become a wall on a phone', () => {
+    setUp(Array.from({ length: 30 }, (_, i) => `Catatan ${i}`))
+    expect(suggestions()).toHaveLength(12)
+  })
+
+  it('narrows to a suggestion that was tapped, and fills the field with it', () => {
+    setUp(saved)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bensin' }))
+
+    expect(note().value).toBe('Bensin')
+    expect(suggestions()).toEqual(['Bensin'])
+  })
+
+  it('still clears the field after an entry is recorded, and offers all of them again', async () => {
+    // The field is uncontrolled on purpose: `form.reset()` is what clears it,
+    // and a `value` prop would take that away. The filter has to follow the
+    // reset, or the row stays narrowed beside an empty field.
+    setUp(saved)
+
+    type('la')
+    await submit()
+
+    expect(note().value).toBe('')
+    expect(suggestions()).toEqual(saved)
   })
 })

@@ -106,6 +106,19 @@ export async function getSpendingForMonth(month: string) {
   return data ?? []
 }
 
+/**
+ * The notes typed before, most-used first.
+ *
+ * The buttons under the note field answer "what do I type often", and recency
+ * was a poor stand-in for that: one unusual note typed this morning outranked
+ * the one written every week. So the rows are counted, not just deduped.
+ *
+ * Ties go to whichever was used most recently, which is the old order — with
+ * one entry each, this returns exactly what it used to. Matching stays
+ * case-insensitive, and the spelling kept is the most recent one, so correcting
+ * "laundry" to "Laundry" is what shows from then on. Still a plain `string[]`;
+ * the count is a ranking, not something the field is asked to render.
+ */
 export async function listNotes() {
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -116,15 +129,20 @@ export async function listNotes() {
     .limit(200)
   if (error) throw error
 
-  const seen = new Set<string>()
-  const notes: string[] = []
-  for (const r of data ?? []) {
+  // `rank` is the position in the newest-first rows, so the smaller it is the
+  // more recently that note was used.
+  const counted = new Map<string, { label: string; count: number; rank: number }>()
+  ;(data ?? []).forEach((r, rank) => {
     const label = (r.note ?? '').trim()
-    if (label === '' || seen.has(label.toLowerCase())) continue
-    seen.add(label.toLowerCase())
-    notes.push(label)
-  }
-  return notes
+    if (label === '') return
+    const seen = counted.get(label.toLowerCase())
+    if (seen) seen.count += 1
+    else counted.set(label.toLowerCase(), { label, count: 1, rank })
+  })
+
+  return [...counted.values()]
+    .sort((a, b) => b.count - a.count || a.rank - b.rank)
+    .map((n) => n.label)
 }
 
 export async function addSpending(input: {
