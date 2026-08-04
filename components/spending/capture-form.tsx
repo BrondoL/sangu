@@ -12,12 +12,13 @@ import type { ActionState } from '@/lib/types'
 export function CaptureForm({
   budgets,
   notes,
-  today,
+  defaultDate,
   action,
 }: {
   budgets: { id: string; name: string }[]
   notes: string[]
-  today: string
+  /** Today when the current month is open, otherwise the 1st of the month shown. */
+  defaultDate: string
   action: (prev: ActionState, fd: FormData) => Promise<ActionState>
 }) {
   const [state, formAction] = useActionState(action, null)
@@ -76,7 +77,13 @@ export function CaptureForm({
 
           <div className="space-y-1.5">
             <Label htmlFor="occurred_on">Tanggal</Label>
-            <Input type="date" id="occurred_on" name="occurred_on" defaultValue={today} required />
+            <Input
+              type="date"
+              id="occurred_on"
+              name="occurred_on"
+              defaultValue={defaultDate}
+              required
+            />
           </div>
 
           <div className="space-y-1.5 sm:col-span-2">
