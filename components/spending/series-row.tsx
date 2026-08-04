@@ -53,10 +53,22 @@ export function SeriesRow({
                 {formatMonthLabel(p.month)}
               </td>
               <td className="amount py-1 text-right">
-                {/* A month with no snapshot is a gap. Printing 0 here would
-                    read as "spent nothing", which is a different claim. */}
+                {/* A month with no snapshot is a gap in the budget, never a
+                    zero: printing Rp 0 would read as "spent nothing", which is
+                    a different claim. But the spending in that month is real
+                    and still has to appear — dropping it turns a month the
+                    budget was never recorded in into a month lived free. */}
                 {p.budget === null ? (
-                  <span className="text-muted-foreground">belum tercatat</span>
+                  p.spent > 0 ? (
+                    <>
+                      {formatRupiah(p.spent)}{' '}
+                      <span className="text-muted-foreground">
+                        / budget belum tercatat
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">belum tercatat</span>
+                  )
                 ) : (
                   `${formatRupiah(p.spent)} / ${formatRupiah(p.budget)}`
                 )}
