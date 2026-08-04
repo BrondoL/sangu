@@ -68,4 +68,39 @@ describe('summarizeBudgetMonth', () => {
     expect(s.unattachedTotal).toBe(0)
     expect(s.totalSpent).toBe(0)
   })
+
+  it('reports the raw ratio, unclamped, so an overspend can be read as a percentage', () => {
+    const s = summarizeBudgetMonth({
+      budgets,
+      spending: [
+        { recurringExpenseId: 'makan', amount: 1_180_000 },
+        { recurringExpenseId: 'jajan', amount: 1_240_000 },
+      ],
+    })
+    expect(s.lines.find((l) => l.id === 'makan')!.ratio).toBeCloseTo(1.18, 5)
+    expect(s.lines.find((l) => l.id === 'jajan')!.ratio).toBeCloseTo(0.708571, 5)
+  })
+
+  it('clamps fill at 1 so an overspent bar cannot outgrow its container', () => {
+    const s = summarizeBudgetMonth({
+      budgets,
+      spending: [
+        { recurringExpenseId: 'makan', amount: 1_180_000 },
+        { recurringExpenseId: 'jajan', amount: 1_240_000 },
+      ],
+    })
+    expect(s.lines.find((l) => l.id === 'makan')!.fill).toBe(1)
+    expect(s.lines.find((l) => l.id === 'jajan')!.fill).toBeCloseTo(0.708571, 5)
+  })
+
+  it('fills a zero budget only once something is spent against it', () => {
+    const spent = summarizeBudgetMonth({
+      budgets,
+      spending: [{ recurringExpenseId: 'reward', amount: 75_000 }],
+    })
+    expect(spent.lines.find((l) => l.id === 'reward')!.fill).toBe(1)
+
+    const untouched = summarizeBudgetMonth({ budgets, spending: [] })
+    expect(untouched.lines.find((l) => l.id === 'reward')!.fill).toBe(0)
+  })
 })

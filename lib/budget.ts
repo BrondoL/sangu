@@ -12,6 +12,8 @@ export interface BudgetLine {
   over: number
   /** null when the budget is 0 — there is no ratio to a zero budget. */
   ratio: number | null
+  /** 0–1, clamped, ready to use as a progress-bar width. */
+  fill: number
 }
 
 export interface BudgetMonthSummary {
@@ -53,6 +55,12 @@ export function summarizeBudgetMonth(input: {
       remaining: Math.max(0, b.amount - spent),
       over: Math.max(0, spent - b.amount),
       ratio: b.amount === 0 ? null : spent / b.amount,
+      fill:
+        b.amount === 0
+          ? spent > 0
+            ? 1
+            : 0
+          : Math.min(1, spent / b.amount),
     }
   })
 
