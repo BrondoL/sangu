@@ -14,7 +14,7 @@ export async function listTrackedBudgets() {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('tracked_budgets')
-    .select('sort_order, recurring_expenses(id, name, default_amount)')
+    .select('sort_order, recurring_expenses(id, name, default_amount, is_active)')
     .order('sort_order')
   if (error) throw error
 
@@ -24,6 +24,7 @@ export async function listTrackedBudgets() {
       id: r.recurring_expenses!.id,
       name: r.recurring_expenses!.name,
       amount: r.recurring_expenses!.default_amount,
+      isActive: r.recurring_expenses!.is_active,
     }))
 }
 
@@ -175,7 +176,7 @@ export async function setBudgetAmount(recurringExpenseId: string, amount: number
  */
 export async function listBudgetsForMonth(month: string) {
   const supabase = await createClient()
-  const [tracked, { data: snaps, error }] = await Promise.all([
+  const [allTracked, { data: snaps, error }] = await Promise.all([
     listTrackedBudgets(),
     supabase
       .from('budget_months')
@@ -183,6 +184,9 @@ export async function listBudgetsForMonth(month: string) {
       .eq('month', toIsoMonth(month)),
   ])
   if (error) throw error
+
+  // Belanja shows budgets you are still running, not ones you have retired.
+  const tracked = allTracked.filter((b) => b.isActive)
 
   const snapshot = new Map(
     (snaps ?? []).map((s) => [s.recurring_expense_id, s.amount])

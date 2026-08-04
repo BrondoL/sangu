@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { formatRupiah } from '@/lib/format'
 import type { ActionState } from '@/lib/types'
 
@@ -43,6 +44,11 @@ function TrackedRow({
       <Label htmlFor={`tracked-${row.id}`} className="flex-1 font-normal">
         {row.name}
       </Label>
+      {!row.is_active && (
+        <Badge variant="secondary" className="font-normal">
+          Non-aktif
+        </Badge>
+      )}
       <span className="amount text-muted-foreground text-sm">
         {formatRupiah(row.default_amount)}
       </span>
@@ -69,7 +75,9 @@ export function TrackedTab({
 
         <ul className="divide-border divide-y">
           {rows
-            .filter((r) => r.is_active)
+            // An inactive budget still shows while it is tracked, otherwise it
+            // would be counted by the tab but impossible to untick.
+            .filter((r) => r.is_active || r.tracked)
             .map((r) => (
               <TrackedRow key={r.id} row={r} action={action} />
             ))}
