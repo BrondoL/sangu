@@ -59,14 +59,16 @@ describe('summarizeBudgetMonth', () => {
     expect(s.totalBudget).toBe(2_750_000)
   })
 
-  it('ignores spending pointing at a budget that is not tracked', () => {
+  it('surfaces spending on an untracked budget as tak terduga instead of making it disappear', () => {
     const s = summarizeBudgetMonth({
       budgets,
       spending: [{ recurringExpenseId: 'listrik', amount: 500_000 }],
     })
+    // No line can claim it — 'listrik' is not tracked here — but the money was
+    // still spent, so it has to land somewhere the user can see and delete it.
     expect(s.lines.every((l) => l.spent === 0)).toBe(true)
-    expect(s.unattachedTotal).toBe(0)
-    expect(s.totalSpent).toBe(0)
+    expect(s.unattachedTotal).toBe(500_000)
+    expect(s.totalSpent).toBe(500_000)
   })
 
   it('reports the raw ratio, unclamped, so an overspend can be read as a percentage', () => {
@@ -263,6 +265,35 @@ describe('suggestAdjustment', () => {
         ['2026-08', 1_000_000, 1_000_000],
       ])
     )
+    expect(a).toEqual({ kind: 'ok' })
+  })
+
+  it('says nothing when four snapshotted months hold no spending at all', () => {
+    const a = suggestAdjustment(
+      series([
+        ['2026-05', 1_750_000, 0],
+        ['2026-06', 1_750_000, 0],
+        ['2026-07', 1_750_000, 0],
+        ['2026-08', 1_750_000, 0],
+      ])
+    )
+    // The median of four zeroes is zero, and "ubah jadi Rp 0" is a change the
+    // write action refuses. Four months of silence means the recording stopped,
+    // not that the budget should be abolished.
+    expect(a).toEqual({ kind: 'ok' })
+  })
+
+  it('will not lower on the strength of months where nothing was recorded', () => {
+    const a = suggestAdjustment(
+      series([
+        ['2026-05', 500_000, 200_000],
+        ['2026-06', 500_000, 0],
+        ['2026-07', 500_000, 250_000],
+        ['2026-08', 500_000, 180_000],
+      ])
+    )
+    // Three real months well under, one empty. An empty month is missing data,
+    // so it cannot be the fourth vote for lowering.
     expect(a).toEqual({ kind: 'ok' })
   })
 

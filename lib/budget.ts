@@ -36,9 +36,14 @@ export function summarizeBudgetMonth(input: {
       unattachedTotal += s.amount
       continue
     }
-    // Spending against an untracked budget belongs to neither column: counting
-    // it as unattached would invent an expense the user never called surprise.
-    if (!tracked.has(s.recurringExpenseId)) continue
+    // Spending against a budget that is no longer tracked falls into "tak
+    // terduga". Dropping it instead would take money that was really spent off
+    // every screen and out of every total while the row sits in the table —
+    // untracking a budget must not be able to hide what it cost.
+    if (!tracked.has(s.recurringExpenseId)) {
+      unattachedTotal += s.amount
+      continue
+    }
     spentBy.set(
       s.recurringExpenseId,
       (spentBy.get(s.recurringExpenseId) ?? 0) + s.amount
@@ -146,12 +151,20 @@ export function suggestAdjustment(series: BudgetSeries): Adjustment {
   if (recent.length < 3) return { kind: 'ok' }
 
   const suggestion = roundUpTo(median(recent.map((p) => p.spent)), ROUND_TO)
+  // A suggestion of zero or less is never a budget anyone can accept: the
+  // action that writes it rejects a non-positive amount, so offering it would
+  // be a button that only ever fails. Months with nothing logged land here.
+  if (suggestion <= 0) return { kind: 'ok' }
   if (suggestion === recent[recent.length - 1].budget) return { kind: 'ok' }
 
   const over = recent.filter((p) => p.spent > p.budget).length
   if (over >= 3) return { kind: 'raise', amount: suggestion, months: recent.length }
 
-  const under = recent.filter((p) => p.spent <= p.budget * UNDER_USED).length
+  // A month with nothing recorded is not evidence of thrift, it is evidence of
+  // not recording. Only a month with real spending can argue for lowering.
+  const under = recent.filter(
+    (p) => p.spent > 0 && p.spent <= p.budget * UNDER_USED
+  ).length
   if (recent.length === 4 && under === 4) {
     return { kind: 'lower', amount: suggestion, months: recent.length }
   }
