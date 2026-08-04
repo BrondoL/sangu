@@ -139,6 +139,39 @@ export async function addSpending(input: {
   revalidateSpending()
 }
 
+/**
+ * Correct one recorded row: its amount, its date, its pos — including to and
+ * from "Tak terduga" — and its note.
+ *
+ * The four fields the capture form writes are listed one by one rather than
+ * spread from `input`, so nothing a caller happens to carry can widen the
+ * update: `user_id` is never sent, and a row cannot be handed to another
+ * account by editing it. `.eq('id', id)` keeps the write to the single row,
+ * and RLS keeps that row to its owner.
+ */
+export async function updateSpending(
+  id: string,
+  input: {
+    occurred_on: string
+    amount: number
+    recurring_expense_id: string | null
+    note: string | null
+  }
+) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('spending')
+    .update({
+      occurred_on: input.occurred_on,
+      amount: input.amount,
+      recurring_expense_id: input.recurring_expense_id,
+      note: input.note,
+    })
+    .eq('id', id)
+  if (error) throw error
+  revalidateSpending()
+}
+
 export async function deleteSpending(id: string) {
   const supabase = await createClient()
   const { error } = await supabase.from('spending').delete().eq('id', id)
