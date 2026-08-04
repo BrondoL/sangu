@@ -337,3 +337,66 @@ Each was a deliberate call; the plan text was not rewritten to match.
 body), then `app/(app)/goals/page.tsx` replacing the placeholder, using the
 existing `getGoalProgress()` in `lib/queries/goals.ts` plus the current month's
 saving items for the "sudah menabung bulan ini" checklist.
+
+## Budget control, 2026-08-04
+
+Sangu planned but never knew what a month actually cost, so a budget could
+drift from reality for years without anything saying so. Three new tables
+record spending as it happens and hold it against `recurring_expenses`.
+
+A full wallet ledger was designed first and dropped: it demands daily
+discipline forever and its payoff, knowing your balance, is something
+m-banking already gives away. The one question only sangu can answer is
+whether a budget is realistic, and that is all this does.
+
+Three decisions worth keeping:
+
+1. **Tracking is opt-in per budget.** Of the 23 recurring expenses, only the
+   variable ones — Jajan, Makan, Bensin, Parkir — carry information worth
+   capturing daily. Logging Kontrakan per transaction tells you nothing you
+   did not already know.
+2. **`budget_months` snapshots the budget per month.** Without it, raising
+   Jajan rewrites the July record that justified raising it. It ships with
+   stage 1 even though only the riwayat page reads it, because a snapshot
+   taken later cannot cover months already gone.
+3. **A month with no snapshot renders as a gap, never zero.** A month you
+   forgot to record is not a month you spent nothing, and that is the failure
+   mode most likely to make the whole feature lie.
+
+The one write into existing data is the adjust button, which sets
+`recurring_expenses.default_amount` behind a confirmation dialog. An
+observation that cannot change anything is just a chart.
+
+A fourth decision came out of building the thing, not out of the spec.
+**Deactivating a tracked expense does not make its budget disappear.** It
+stays in Dilacak, marked "Non-aktif", so it can still be untracked by hand,
+and its spending history stays on Riwayat exactly as recorded. But it drops
+off Belanja — a retired expense has nothing live to spend against — and
+Riwayat stops offering it an adjustment, since there is no longer a
+`default_amount` worth changing. Deleting the row outright would have taken
+an already-recorded month down with the definition that produced it, which is
+the same failure mode decision 3 above was written to avoid.
+
+A few smaller choices are worth naming so they don't get "cleaned up" later
+by someone who didn't see why they're there:
+
+- `BudgetLine` carries both a raw `ratio` and a pre-clamped `fill`. The
+  project rule is no arithmetic in components, and a ratio past 1 is exactly
+  what a bar has to clamp before it can render — doing both in `lib/budget.ts`
+  means the bar component never has to do that math itself.
+- The capture form clears its amount by remounting `RupiahInput` under a
+  changing `key`, not `form.reset()`. A native reset cannot clear a
+  React-controlled input, and the stale figure would otherwise sit there
+  ready to be resubmitted as the next entry's amount.
+- The verdict sentence on Riwayat reads its denominator off the verdict's own
+  `months` count instead of stating one. A hardcoded fraction was tried first
+  and turned out to claim both a denominator and a consecutiveness the
+  underlying rule never actually guarantees.
+
+**Not opened by a human yet.** Same limitation as the rest of this document:
+no agent in this run could drive a browser, so nothing above has been
+click-tested against a real session. The database currently holds no tracked
+budgets at all, so the first thing a human has to do before anything else is
+testable is tick some on in Pengaturan → Dilacak. The full list of what still
+needs a real browser is in `task-10-report.md` under
+`.superpowers/sdd/2026-08-04-budget-control/`.
