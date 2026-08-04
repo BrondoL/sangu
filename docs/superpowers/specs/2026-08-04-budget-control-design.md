@@ -109,9 +109,19 @@ Without it, stage 2 poisons its own evidence. Raise Jajan from 1.750.000 to
 budget" — the very record that justified the change destroys the justification.
 Snapshotting the budget per month keeps history honest.
 
-The row is written lazily: when the month's page is first loaded, any tracked
-budget without a row for that month gets one, copying `default_amount` as it
-stands then. **The write must ship in stage 1, and so must the read** — stage
+The row is written lazily: when the **current** month's page is first loaded,
+any tracked, still-active budget without a row for that month gets one, copying
+`default_amount` as it stands then. Only the current month, because
+`default_amount` is only known to be right for today — writing it into whatever
+month the picker happens to land on would record November's budget as June's
+and manufacture the very drift this table exists to prevent. A past month that
+was never opened stays a gap, and a retired budget stops collecting rows.
+
+Accepting an adjustment writes the new amount into the current month's row too,
+upserting it. That month is still being lived, so the budget that applies to it
+is the one just chosen; without this the page would show the new figure in the
+header and the old one in the month, and the verdict would go on offering the
+change that was already accepted. Past months are never rewritten. **The write must ship in stage 1, and so must the read** — stage
 1 itself reads the snapshot back, so the month you're looking at shows the
 budget that applied then rather than whatever `default_amount` holds today,
 and stage 2 reads the same table to draw its comparison across months. Only
@@ -138,8 +148,12 @@ separate screen, no modal, because a modal is one tap of friction on a thing
 done several times a day.
 
 **The month.** Below it, one row per tracked budget: name, budget, spent,
-remaining or over, and a bar. Then an untracked section listing individual
-unattached expenses with their notes.
+remaining or over, and a bar. Then every entry made in the month, newest first,
+each showing which budget it went to — "Tak terduga" when it has none, or when
+its budget is no longer tracked — and its note. Every row, not only the
+unattached ones: a row that is not listed is a row that cannot be deleted, and
+a mistyped amount that cannot be removed is what eventually raises a real
+budget.
 
 ```
 Agustus                          catat: [ 25.000 ] [Jajan ▾] [hari ini]
@@ -149,12 +163,15 @@ Makan      1.000.000   terpakai 1.180.000   lebih  180.000  ▓▓▓▓▓▓�
 Bensin       200.000   terpakai   150.000   sisa    50.000  ▓▓▓▓▓▓▓░░░
 Parkir        36.000   terpakai    41.000   lebih     5.000  ▓▓▓▓▓▓▓▓▓▓
 
-Tak terduga                       167.000
-  14/08  Laundry                   45.000
-  22/08  Servis kipas             122.000
+Catatan bulan ini            tak terduga  167.000
+  22/08  Servis kipas                     122.000  [hapus]
+  20/08  Jajan / kopi                      25.000  [hapus]
+  14/08  Laundry                           45.000  [hapus]
 ```
 
-A month picker, matching the dashboard's. Each spending row can be edited or
+A month picker, matching the dashboard's. The capture date follows it: today
+when the current month is open, otherwise the first of the month being viewed,
+so catching up on July does not file into August. Each spending row can be
 deleted.
 
 **Choosing what to track** is a new **Dilacak** tab in Pengaturan, listing the
@@ -170,12 +187,21 @@ Route `app/(app)/spending/riwayat/`.
 Per tracked budget, the last six months of budget against actual, drawn from
 `budget_months` (not from today's `default_amount`), with a verdict:
 
-- **Consistently over** — over in at least three of the last four months with a
-  snapshot. Suggests raising to the median of those actuals, rounded up to the
-  nearest 10.000.
-- **Consistently under** — used 60% or less in at least four consecutive months.
-  Suggests lowering, same rounding.
+The window the rule reads is the last four months that carry a snapshot with a
+budget above zero. Those four are the last four *recorded* months, not the last
+four calendar months — a gap in the middle is skipped over, not counted as
+anything. Fewer than three recorded months and no verdict is given at all.
+
+- **Consistently over** — over budget in at least three of those four months.
+- **Consistently under** — 60% or less of the budget used, with something
+  actually recorded, in all four. A month with no spending at all is missing
+  data, not thrift, and cannot vote here.
 - **Pas** — anything else. Says nothing and offers no button.
+
+Both suggest the same figure: the median of the actual spend across all four
+months, rounded up to the nearest 10.000 — all four, not only the months that
+triggered the verdict. Nothing is suggested when that figure works out to zero
+or less, or when it equals the budget already set.
 
 The rule is deliberately dull and stated on screen next to each verdict. A
 suggestion you cannot check is a suggestion you cannot trust, and this one
@@ -184,6 +210,9 @@ changes a real number in your budget.
 Months with no snapshot are shown as gaps, never as zero. A month you forgot to
 record is not a month you spent nothing, and the difference has to survive on
 screen — this is the failure mode most likely to make the whole feature lie.
+The gap is in the *budget*, though, not in the spending: if money was logged in
+such a month it is still shown, next to a note that the budget was never
+recorded. Hiding it would be the same lie from the other side.
 
 **New budgets.** Unattached spending is grouped by note text across the window,
 matched case-insensitively and with surrounding whitespace ignored. A note that
@@ -227,7 +256,10 @@ the rest of `lib/queries/`.
 - **Amount** is a positive integer rupiah, enforced by a check constraint and at
   the form. No floats, per the repo rule.
 - **Untracking a budget** keeps its history. Re-tracking it later shows the
-  months it was away as gaps, not zeros.
+  months it was away as gaps, not zeros. Spending already filed against it has
+  no line to sit under any more, so on the month page it reads as "tak terduga"
+  and counts towards that total — visible and deletable. Untracking must not be
+  able to make recorded money vanish from the screen.
 - **Editing a spending row's date** moves it between months; both months'
   figures follow.
 
