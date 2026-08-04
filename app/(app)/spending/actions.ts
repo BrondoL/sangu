@@ -1,6 +1,6 @@
 'use server'
 
-import { addSpending, deleteSpending } from '@/lib/queries/spending'
+import { addSpending, deleteSpending, setBudgetAmount } from '@/lib/queries/spending'
 import type { ActionState } from '@/lib/types'
 
 const str = (fd: FormData, key: string) => String(fd.get(key) ?? '')
@@ -36,6 +36,19 @@ export async function addSpendingAction(
 export async function deleteSpendingAction(id: string): Promise<ActionState> {
   try {
     await deleteSpending(id)
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, message: message(e) }
+  }
+}
+
+export async function applyAdjustmentAction(
+  recurringExpenseId: string,
+  amount: number
+): Promise<ActionState> {
+  if (amount <= 0) return { ok: false, message: 'Nominal harus lebih dari nol' }
+  try {
+    await setBudgetAmount(recurringExpenseId, amount)
     return { ok: true }
   } catch (e) {
     return { ok: false, message: message(e) }

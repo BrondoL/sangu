@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { MonthPicker } from '@/components/month-picker'
 import { Eyebrow, PageHeader } from '@/components/kwitansi'
@@ -52,6 +53,9 @@ export default async function SpendingPage({
   return (
     <div className="space-y-4">
       <PageHeader title="Belanja" lead={formatMonthLabel(month)}>
+        <Link href="/spending/riwayat" className="text-muted-foreground text-sm underline">
+          Riwayat
+        </Link>
         <Suspense fallback={null}>
           <MonthPicker defaultMonth={month} />
         </Suspense>
