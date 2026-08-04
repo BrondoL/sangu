@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RupiahInput } from '@/components/rupiah-input'
 import { FormDialog } from '@/components/form-dialog'
+import { NoteField, PosField } from '@/components/spending/fields'
 import { formatRupiah } from '@/lib/format'
 import type { ActionState } from '@/lib/types'
 
@@ -45,7 +46,7 @@ export function SpendingFields({
     <>
       <input type="hidden" name="id" value={entry.id} />
 
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <Label htmlFor={`${uid}-amount`}>Nominal</Label>
         {/* Its amount lives in React state, so it takes its value from
             `defaultValue` once, at mount. FormDialog remounts these fields on
@@ -58,24 +59,13 @@ export function SpendingFields({
         />
       </div>
 
-      <div className="space-y-1">
-        <Label htmlFor={`${uid}-pos`}>Pos</Label>
-        <select
-          id={`${uid}-pos`}
-          name="recurring_expense_id"
-          className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
-          defaultValue={entry.recurring_expense_id ?? ''}
-        >
-          <option value="">Tak terduga</option>
-          {budgets.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <PosField
+        id={`${uid}-pos`}
+        budgets={budgets}
+        defaultValue={entry.recurring_expense_id ?? ''}
+      />
 
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <Label htmlFor={`${uid}-date`}>Tanggal</Label>
         <Input
           type="date"
@@ -94,21 +84,11 @@ export function SpendingFields({
         </p>
       </div>
 
-      <div className="space-y-1">
-        <Label htmlFor={`${uid}-note`}>Catatan</Label>
-        <Input
-          id={`${uid}-note`}
-          name="note"
-          defaultValue={entry.note ?? ''}
-          list={`${uid}-notes`}
-          autoComplete="off"
-        />
-        <datalist id={`${uid}-notes`}>
-          {notes.map((n) => (
-            <option key={n} value={n} />
-          ))}
-        </datalist>
-      </div>
+      <NoteField
+        id={`${uid}-note`}
+        notes={notes}
+        defaultValue={entry.note ?? ''}
+      />
     </>
   )
 }

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { SectionHead } from '@/components/kwitansi'
+import { NoteField, PosField } from '@/components/spending/fields'
 import type { ActionState } from '@/lib/types'
 
 export function CaptureForm({
@@ -62,8 +63,9 @@ export function CaptureForm({
           width, and on a phone gave it a column to itself.
 
           Nominal and Tanggal take the first row because they are the two that
-          get typed on every entry; Pos and Catatan follow, so what grows under
-          Catatan grows downwards rather than pushing a neighbour out of line.
+          get typed on every entry; Pos and Catatan follow, and the suggestions
+          under Catatan grow downwards into the last row rather than pushing a
+          neighbouring field out of line.
         */}
         <form ref={formRef} action={formAction} className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -83,35 +85,9 @@ export function CaptureForm({
               />
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="recurring_expense_id">Pos</Label>
-              {/* Set to the same rule as Input — it was `h-9` against every
-                  other field's `h-8`, so the two fields sharing a row sat at
-                  different heights before the button was ever reached. */}
-              <select
-                id="recurring_expense_id"
-                name="recurring_expense_id"
-                className="border-input focus-visible:border-ring focus-visible:ring-ring/50 dark:bg-input/30 h-8 w-full rounded-lg border bg-transparent px-2 text-base transition-colors outline-none focus-visible:ring-3 md:text-sm"
-                defaultValue=""
-              >
-                <option value="">Tak terduga</option>
-                {budgets.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <PosField id="recurring_expense_id" budgets={budgets} />
 
-            <div className="space-y-1.5">
-              <Label htmlFor="note">Catatan</Label>
-              <Input id="note" name="note" list="spending-notes" autoComplete="off" />
-              <datalist id="spending-notes">
-                {notes.map((n) => (
-                  <option key={n} value={n} />
-                ))}
-              </datalist>
-            </div>
+            <NoteField id="note" notes={notes} />
           </div>
 
           {/* Full width on a phone, where it is a thumb target; right-aligned
