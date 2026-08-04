@@ -835,6 +835,7 @@ half of the goal: not just adjusting budgets, but noticing missing ones."
   - `listTrackedBudgets(): Promise<{ id: string; name: string; amount: number }[]>`
   - `listAllRecurringWithTracking(): Promise<{ id: string; name: string; default_amount: number; is_active: boolean; tracked: boolean }[]>`
   - `ensureBudgetSnapshots(month: string): Promise<void>`
+  - `listBudgetsForMonth(month: string): Promise<{ id: string; name: string; amount: number }[]>`
   - `getSpendingForMonth(month: string): Promise<Tables<'spending'>[]>`
   - `getSpendingHistory(months: string[]): Promise<{ snapshots: { recurringExpenseId: string; month: string; amount: number }[]; spending: { recurringExpenseId: string | null; month: string; amount: number; note: string | null }[] }>`
   - `listNotes(): Promise<string[]>`
@@ -1023,6 +1024,31 @@ export async function setBudgetAmount(recurringExpenseId: string, amount: number
 Append to `lib/queries/spending.ts`:
 
 ```ts
+/**
+ * The tracked budgets as they stood in `month`, read from the snapshot rather
+ * than from the definition. The page has a month picker: without this, opening
+ * August in October would hold August's spending against October's budget,
+ * which is the exact drift budget_months exists to prevent.
+ */
+export async function listBudgetsForMonth(month: string) {
+  const supabase = await createClient()
+  const [tracked, { data: snaps, error }] = await Promise.all([
+    listTrackedBudgets(),
+    supabase
+      .from('budget_months')
+      .select('recurring_expense_id, amount')
+      .eq('month', toIsoMonth(month)),
+  ])
+  if (error) throw error
+
+  const snapshot = new Map(
+    (snaps ?? []).map((s) => [s.recurring_expense_id, s.amount])
+  )
+  // A budget tracked only after the month had passed has no snapshot for it;
+  // its current amount is then the only figure that exists.
+  return tracked.map((b) => ({ ...b, amount: snapshot.get(b.id) ?? b.amount }))
+}
+
 /** Snapshots and spending for a window of months, shaped for `lib/budget.ts`. */
 export async function getSpendingHistory(months: string[]) {
   const supabase = await createClient()
@@ -1254,6 +1280,7 @@ be lifted out in one piece."
 ### Task 8: Belanja page — capture and the current month
 
 **Files:**
+- Modify: `lib/month.ts`, `lib/month.test.ts`
 - Create: `app/(app)/spending/page.tsx`
 - Create: `app/(app)/spending/loading.tsx`
 - Create: `app/(app)/spending/actions.ts`
@@ -1262,10 +1289,49 @@ be lifted out in one piece."
 - Modify: `components/nav.tsx`
 
 **Interfaces:**
-- Consumes: `summarizeBudgetMonth` / `BudgetLine` from `lib/budget.ts`; `listTrackedBudgets`, `ensureBudgetSnapshots`, `getSpendingForMonth`, `listNotes`, `addSpending`, `deleteSpending` from `lib/queries/spending.ts`; `RupiahInput`, `SubmitButton`, `DeleteButton`, `MonthPicker`, `PageHeader`, `Eyebrow` from existing components.
+- Consumes: `summarizeBudgetMonth` / `BudgetLine` from `lib/budget.ts`; `listBudgetsForMonth`, `ensureBudgetSnapshots`, `getSpendingForMonth`, `listNotes`, `addSpending`, `deleteSpending` from `lib/queries/spending.ts`; `RupiahInput`, `SubmitButton`, `DeleteButton`, `MonthPicker`, `PageHeader`, `Eyebrow` from existing components.
 - Produces: `addSpendingAction(_prev: ActionState, formData: FormData): Promise<ActionState>` and `deleteSpendingAction(id: string): Promise<ActionState>` from `app/(app)/spending/actions.ts`.
 
-- [ ] **Step 1: Write the server actions**
+- [ ] **Step 1: Add `currentDateParam` to `lib/month.ts`**
+
+The page needs today's date for the capture form's default. `new Date().toISOString()`
+gives the UTC date, so between 00:00 and 07:00 WIB it names yesterday — the same
+trap `currentMonthParam` was written to avoid.
+
+Append to `lib/month.ts`:
+
+```ts
+/** Today's date as 'YYYY-MM-DD' in WIB, for the same reason as `currentMonthParam`. */
+export function currentDateParam(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now)
+}
+```
+
+Append to `lib/month.test.ts`:
+
+```ts
+import { currentDateParam } from './month'
+
+describe('currentDateParam', () => {
+  it('reads the WIB date, not the UTC one', () => {
+    // 2026-08-04T18:30Z is already 2026-08-05 in Jakarta (UTC+7).
+    expect(currentDateParam(new Date('2026-08-04T18:30:00Z'))).toBe('2026-08-05')
+  })
+  it('does not roll forward before the WIB day ends', () => {
+    expect(currentDateParam(new Date('2026-08-04T16:59:00Z'))).toBe('2026-08-04')
+  })
+})
+```
+
+Run: `npx vitest run lib/month.test.ts`
+Expected: PASS, including the two new cases.
+
+- [ ] **Step 2: Write the server actions**
 
 Create `app/(app)/spending/actions.ts`:
 
@@ -1315,7 +1381,7 @@ export async function deleteSpendingAction(id: string): Promise<ActionState> {
 }
 ```
 
-- [ ] **Step 2: Write the capture form**
+- [ ] **Step 3: Write the capture form**
 
 Create `components/spending/capture-form.tsx`:
 
@@ -1407,7 +1473,7 @@ export function CaptureForm({
 }
 ```
 
-- [ ] **Step 3: Write the budget row**
+- [ ] **Step 4: Write the budget row**
 
 Create `components/spending/budget-row.tsx`:
 
@@ -1453,7 +1519,7 @@ export function BudgetRow({ line }: { line: BudgetLine }) {
 }
 ```
 
-- [ ] **Step 4: Write the page**
+- [ ] **Step 5: Write the page**
 
 Create `app/(app)/spending/page.tsx`:
 
@@ -1466,13 +1532,18 @@ import { DeleteButton } from '@/components/delete-button'
 import { CaptureForm } from '@/components/spending/capture-form'
 import { BudgetRow } from '@/components/spending/budget-row'
 import {
-  listTrackedBudgets,
+  listBudgetsForMonth,
   ensureBudgetSnapshots,
   getSpendingForMonth,
   listNotes,
 } from '@/lib/queries/spending'
 import { summarizeBudgetMonth } from '@/lib/budget'
-import { currentMonthParam, toMonthParam, formatMonthLabel } from '@/lib/month'
+import {
+  currentMonthParam,
+  currentDateParam,
+  toMonthParam,
+  formatMonthLabel,
+} from '@/lib/month'
 import { formatRupiah } from '@/lib/format'
 import { addSpendingAction, deleteSpendingAction } from './actions'
 
@@ -1484,8 +1555,10 @@ export default async function SpendingPage({
   const { month: monthParam } = await searchParams
   const month = toMonthParam(monthParam ?? currentMonthParam())
 
-  const budgets = await listTrackedBudgets()
+  // Snapshot first, then read the snapshot back: the figures on screen are the
+  // ones that applied in `month`, not the ones that apply today.
   await ensureBudgetSnapshots(month)
+  const budgets = await listBudgetsForMonth(month)
 
   const [spending, notes] = await Promise.all([
     getSpendingForMonth(month),
@@ -1513,7 +1586,7 @@ export default async function SpendingPage({
       <CaptureForm
         budgets={budgets}
         notes={notes}
-        today={new Date().toISOString().slice(0, 10)}
+        today={currentDateParam()}
         action={addSpendingAction}
       />
 
@@ -1575,11 +1648,11 @@ export default async function SpendingPage({
 }
 ```
 
-- [ ] **Step 5: Add the loading skeleton**
+- [ ] **Step 6: Add the loading skeleton**
 
 Create `app/(app)/spending/loading.tsx`, copying the shape of `app/(app)/dashboard/loading.tsx`. Read that file first and mirror it, changing only the title to `Belanja`.
 
-- [ ] **Step 6: Add the nav link**
+- [ ] **Step 7: Add the nav link**
 
 In `components/nav.tsx`, add `Wallet` to the `lucide-react` import and insert into `LINKS` between `/current` and `/goals`:
 
@@ -1587,12 +1660,12 @@ In `components/nav.tsx`, add `Wallet` to the `lucide-react` import and insert in
 { href: '/spending', label: 'Belanja', icon: Wallet },
 ```
 
-- [ ] **Step 7: Verify**
+- [ ] **Step 8: Verify**
 
 Run: `npx tsc --noEmit && npm run lint && npm test && npm run build`
 Expected: all clean, 91 tests passing, build succeeds with `/spending` listed as a dynamic route.
 
-- [ ] **Step 8: Check it in the browser**
+- [ ] **Step 9: Check it in the browser**
 
 Run `npm run dev` and open `/spending`. Then:
 1. Record 25.000 against **Jajan**. Confirm the row's spent figure rises and the form clears without a reload.
@@ -1601,7 +1674,7 @@ Run `npm run dev` and open `/spending`. Then:
 4. Reopen the note field and confirm `Laundry` is offered as a suggestion.
 5. Delete the Laundry entry and confirm the total falls.
 
-- [ ] **Step 9: Confirm the snapshot was written**
+- [ ] **Step 10: Confirm the snapshot was written**
 
 Run through the Supabase MCP tool `execute_sql`:
 
@@ -1611,7 +1684,7 @@ select recurring_expense_id, month, amount from budget_months order by month des
 
 Expected: one row per tracked budget for the current month, each amount matching that budget's `default_amount`.
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
 git add "app/(app)/spending" components/spending components/nav.tsx
