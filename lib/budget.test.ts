@@ -282,16 +282,18 @@ describe('suggestAdjustment', () => {
 import { groupUnattached } from './budget'
 
 describe('groupUnattached', () => {
-  it('groups a note that recurs across three months', () => {
+  it('groups a recurring note across months, keeping the spelling first seen', () => {
     const groups = groupUnattached({
       spending: [
-        { month: '2026-06', note: 'Laundry', amount: 45_000 },
-        { month: '2026-07', note: 'laundry', amount: 50_000 },
-        { month: '2026-08', note: '  Laundry  ', amount: 55_000 },
+        { month: '2026-06', note: 'laundry', amount: 45_000 },
+        { month: '2026-07', note: 'Laundry', amount: 50_000 },
+        { month: '2026-08', note: '  LAUNDRY  ', amount: 55_000 },
       ],
     })
     expect(groups).toHaveLength(1)
-    expect(groups[0].note).toBe('Laundry')
+    // First seen, not last: an implementation that overwrote the label on every
+    // match would report 'LAUNDRY' here and the grouping would still look right.
+    expect(groups[0].note).toBe('laundry')
     expect(groups[0].months).toBe(3)
     expect(groups[0].total).toBe(150_000)
     expect(groups[0].perMonth).toEqual([
