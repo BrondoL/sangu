@@ -7,6 +7,7 @@ import {
   currentMonthParam,
   monthsBetween,
 } from './month'
+import { currentDateParam } from './month'
 
 describe('shiftMonth', () => {
   it('moves forward within a year', () => {
@@ -69,5 +70,15 @@ describe('formatMonthLabel', () => {
   })
   it('accepts a full ISO date', () => {
     expect(formatMonthLabel('2026-01-01')).toBe('Januari 2026')
+  })
+})
+
+describe('currentDateParam', () => {
+  it('reads the WIB date, not the UTC one', () => {
+    // 2026-08-04T18:30Z is already 2026-08-05 in Jakarta (UTC+7).
+    expect(currentDateParam(new Date('2026-08-04T18:30:00Z'))).toBe('2026-08-05')
+  })
+  it('does not roll forward before the WIB day ends', () => {
+    expect(currentDateParam(new Date('2026-08-04T16:59:00Z'))).toBe('2026-08-04')
   })
 })

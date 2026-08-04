@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, CalendarRange, Target, Settings } from 'lucide-react'
+import { LayoutDashboard, CalendarRange, Target, Settings, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const LINKS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/current', label: 'Bulan Ini', icon: CalendarRange },
+  { href: '/spending', label: 'Belanja', icon: Wallet },
   { href: '/goals', label: 'Target', icon: Target },
   { href: '/settings', label: 'Pengaturan', icon: Settings },
 ]

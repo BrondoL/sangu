@@ -67,3 +67,13 @@ export function formatMonthLabel(month: string): string {
   const [y, m] = parts(month)
   return `${MONTH_NAMES[m - 1]} ${y}`
 }
+
+/** Today's date as 'YYYY-MM-DD' in WIB, for the same reason as `currentMonthParam`. */
+export function currentDateParam(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now)
+}
