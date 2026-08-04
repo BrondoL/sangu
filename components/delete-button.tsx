@@ -20,18 +20,27 @@ import type { ActionState } from '@/lib/types'
 export function DeleteButton({
   id,
   label,
+  description,
   action,
 }: {
   id: string
   label: string
+  /**
+   * What else identifies the thing being deleted, when the label alone does
+   * not. A spending row's label is its amount, and several rows in a month can
+   * carry the same one — the date and the pos are what tell them apart. Older
+   * callers name a unique record and pass nothing here.
+   */
+  description?: string
   action: (id: string) => Promise<ActionState>
 }) {
   const [pending, startTransition] = useTransition()
+  const named = description ? `${label}, ${description}` : label
 
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={`Hapus ${label}`}>
+        <Button variant="ghost" size="icon" aria-label={`Hapus ${named}`}>
           <Trash2 className="size-4" />
         </Button>
       </AlertDialogTrigger>
@@ -39,6 +48,9 @@ export function DeleteButton({
         <AlertDialogHeader>
           <AlertDialogTitle>Hapus {label}?</AlertDialogTitle>
           <AlertDialogDescription>
+            {description && (
+              <span className="text-foreground mb-1 block">{description}</span>
+            )}
             Data yang dihapus tidak bisa dikembalikan.
           </AlertDialogDescription>
         </AlertDialogHeader>

@@ -19,6 +19,7 @@ import {
   toMonthParam,
   toIsoMonth,
   formatMonthLabel,
+  formatDateLabel,
 } from '@/lib/month'
 import { formatRupiah } from '@/lib/format'
 import { addSpendingAction, deleteSpendingAction } from './actions'
@@ -141,9 +142,17 @@ export default async function SpendingPage({
                     )}
                   </span>
                   <span className="amount text-sm">{formatRupiah(s.amount)}</span>
+                  {/* The dialog names the entry, not a budget. Passing the
+                      note-or-pos alone produced "Hapus Jajan?" on any attached
+                      row without a note — and "Jajan" is also a budget row a
+                      few centimetres up the page. The amount and the date are
+                      what identify one irreversible delete from another. */}
                   <DeleteButton
                     id={s.id}
-                    label={s.note ?? label(s.recurring_expense_id)}
+                    label={formatRupiah(s.amount)}
+                    description={`${formatDateLabel(s.occurred_on)} · ${label(
+                      s.recurring_expense_id
+                    )}${s.note ? ` · ${s.note}` : ''}`}
                     action={deleteSpendingAction}
                   />
                 </li>

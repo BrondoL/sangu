@@ -68,6 +68,15 @@ export function formatMonthLabel(month: string): string {
   return `${MONTH_NAMES[m - 1]} ${y}`
 }
 
+/**
+ * A full ISO date as '22 Agustus 2026'. String work only, like the rest of this
+ * file — no Date object, so it cannot shift a day depending on where it runs.
+ */
+export function formatDateLabel(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number)
+  return `${d} ${MONTH_NAMES[m - 1]} ${y}`
+}
+
 /** Today's date as 'YYYY-MM-DD' in WIB, for the same reason as `currentMonthParam`. */
 export function currentDateParam(now: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', {

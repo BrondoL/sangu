@@ -4,6 +4,7 @@ import {
   toIsoMonth,
   toMonthParam,
   formatMonthLabel,
+  formatDateLabel,
   currentMonthParam,
   monthsBetween,
 } from './month'
@@ -70,6 +71,17 @@ describe('formatMonthLabel', () => {
   })
   it('accepts a full ISO date', () => {
     expect(formatMonthLabel('2026-01-01')).toBe('Januari 2026')
+  })
+})
+
+describe('formatDateLabel', () => {
+  it('renders a full ISO date in Indonesian, without a leading zero on the day', () => {
+    expect(formatDateLabel('2026-08-22')).toBe('22 Agustus 2026')
+    expect(formatDateLabel('2026-01-05')).toBe('5 Januari 2026')
+  })
+  it('does not shift the day, whatever the machine timezone is', () => {
+    // A Date-based formatter would read this as the 31st in a western zone.
+    expect(formatDateLabel('2026-12-01')).toBe('1 Desember 2026')
   })
 })
 
