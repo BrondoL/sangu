@@ -42,6 +42,9 @@ export async function getMonthlyData(month: string): Promise<MonthlyCalcInput> {
   const supabase = await createClient()
   const iso = toIsoMonth(month)
 
+  // Items and balances are embedded through their period_id foreign key rather
+  // than fetched in a second wave keyed on period.id. Same rows, one round trip
+  // instead of two — which is the whole month's latency budget on a cold hit.
   const [
     { data: accounts, error: aErr },
     { data: period, error: pErr },
@@ -50,11 +53,17 @@ export async function getMonthlyData(month: string): Promise<MonthlyCalcInput> {
     // Deliberately unfiltered: an account deactivated today may still carry
     // items in an old month, and that month has to keep showing them.
     supabase.from('accounts').select('*').order('sort_order'),
-    supabase.from('monthly_periods').select('*').eq('month', iso).maybeSingle(),
+    supabase
+      .from('monthly_periods')
+      .select(
+        'actual_salary, monthly_items(account_id, amount, category, is_paid), monthly_balances(account_id, balance)'
+      )
+      .eq('month', iso)
+      .maybeSingle(),
     supabase.from('settings').select('base_salary').maybeSingle(),
   ])
-  const headErr = aErr ?? pErr ?? sErr
-  if (headErr) throw headErr
+  const error = aErr ?? pErr ?? sErr
+  if (error) throw error
 
   const toCalcAccount = (a: {
     id: string
@@ -78,38 +87,26 @@ export async function getMonthlyData(month: string): Promise<MonthlyCalcInput> {
     }
   }
 
-  const [{ data: items, error: iErr }, { data: balances, error: bErr }] =
-    await Promise.all([
-      supabase
-        .from('monthly_items')
-        .select('account_id, amount, category, is_paid')
-        .eq('period_id', period.id),
-      supabase
-        .from('monthly_balances')
-        .select('account_id, balance')
-        .eq('period_id', period.id),
-    ])
-  const bodyErr = iErr ?? bErr
-  if (bodyErr) throw bodyErr
+  const { monthly_items: items, monthly_balances: balances } = period
 
   // A deactivated account earns its row back only for the months it took part
   // in — otherwise every retired account would linger as an empty row forever.
   const involved = new Set([
-    ...(items ?? []).map((i) => i.account_id),
-    ...(balances ?? []).map((b) => b.account_id),
+    ...items.map((i) => i.account_id),
+    ...balances.map((b) => b.account_id),
   ])
 
   return {
     accounts: (accounts ?? [])
       .filter((a) => a.is_active || involved.has(a.id))
       .map(toCalcAccount),
-    items: (items ?? []).map((i) => ({
+    items: items.map((i) => ({
       accountId: i.account_id,
       amount: i.amount,
       category: i.category,
       isPaid: i.is_paid,
     })),
-    balances: (balances ?? []).map((b) => ({
+    balances: balances.map((b) => ({
       accountId: b.account_id,
       balance: b.balance,
     })),
