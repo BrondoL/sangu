@@ -221,6 +221,46 @@ export function suggestAdjustment(
   return { kind: 'ok' }
 }
 
+/**
+ * Every row in the window that no series on the page can claim: spending with
+ * no budget at all, and spending against a budget that is not among the ones
+ * being rendered.
+ *
+ * The second kind is the one that used to disappear. `summarizeBudgetMonth`
+ * already folds spending on an untracked budget into "tak terduga", but Riwayat
+ * drew its series from the tracked budgets alone, so such a row matched no
+ * series — and, being filtered out of the note grouping too, appeared nowhere
+ * on the page at all. Untracking a budget must not be able to hide what it
+ * cost. The caller passes the same budget list its series were built from, so
+ * the two cannot disagree about who owns a row; a retired budget that is still
+ * tracked has its own series and so is not pooled here.
+ *
+ * The total is computed here rather than in the page because grouping is by
+ * note: a row with no note reaches no group, so without a figure that counts
+ * every row the money would still be invisible.
+ */
+export function poolUnattached(input: {
+  spending: {
+    recurringExpenseId: string | null
+    month: string
+    note: string | null
+    amount: number
+  }[]
+  budgetIds: string[]
+}): {
+  spending: { month: string; note: string | null; amount: number }[]
+  total: number
+} {
+  const rendered = new Set(input.budgetIds)
+  const spending = input.spending
+    .filter(
+      (s) => s.recurringExpenseId === null || !rendered.has(s.recurringExpenseId)
+    )
+    .map((s) => ({ month: s.month, note: s.note, amount: s.amount }))
+
+  return { spending, total: spending.reduce((t, s) => t + s.amount, 0) }
+}
+
 export interface NoteGroup {
   note: string
   months: number

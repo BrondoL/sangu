@@ -6,6 +6,7 @@ import { listTrackedBudgets, getSpendingHistory } from '@/lib/queries/spending'
 import {
   compareAcrossMonths,
   suggestAdjustment,
+  poolUnattached,
   groupUnattached,
 } from '@/lib/budget'
 import { currentMonthParam, shiftMonth, toMonthParam, formatMonthLabel } from '@/lib/month'
@@ -32,11 +33,16 @@ export default async function SpendingHistoryPage() {
 
   const budgetById = new Map(budgets.map((b) => [b.id, b.amount]))
   const activeById = new Map(budgets.map((b) => [b.id, b.isActive]))
-  const newBudgets = groupUnattached({
-    spending: spending
-      .filter((s) => s.recurringExpenseId === null)
-      .map((s) => ({ month: s.month, note: s.note, amount: s.amount })),
+  // Every row no series above can claim, pooled from the same budget list the
+  // series were built from so the two cannot disagree. Filtering on
+  // `recurringExpenseId === null` alone left spending on an untracked budget in
+  // neither half of the page — it matched no series and was kept out of the
+  // grouping — while Belanja counts that same money as tak terduga.
+  const unattached = poolUnattached({
+    spending,
+    budgetIds: budgets.map((b) => b.id),
   })
+  const newBudgets = groupUnattached({ spending: unattached.spending })
 
   return (
     <div className="space-y-4">
@@ -78,7 +84,19 @@ export default async function SpendingHistoryPage() {
 
       <Card>
         <CardContent className="space-y-2.5">
-          <Eyebrow>Mungkin budget baru</Eyebrow>
+          {/* The total is beside the heading because the list below cannot
+              hold it: grouping is by note, so a row with no note — or a note
+              that never repeats — reaches no group. Without this figure that
+              money is nowhere on the page. */}
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <Eyebrow>Mungkin budget baru</Eyebrow>
+            <span className="text-muted-foreground text-xs">
+              total tak terduga{' '}
+              <span className="amount text-foreground text-sm">
+                {formatRupiah(unattached.total)}
+              </span>
+            </span>
+          </div>
           {newBudgets.length === 0 ? (
             <p className="text-muted-foreground text-xs">
               Belum ada catatan tak terduga yang berulang cukup sering.
@@ -99,7 +117,9 @@ export default async function SpendingHistoryPage() {
           <p className="text-muted-foreground text-xs">
             Pengeluaran tak terduga yang namanya berulang. Kalau memang rutin,
             daftarkan sebagai pengeluaran rutin di Pengaturan lalu centang di
-            tab Dilacak.
+            tab Dilacak. Totalnya menghitung semua pengeluaran di rentang ini
+            yang tidak punya pos di daftar atas — termasuk yang tanpa catatan
+            dan yang posnya sudah tidak dilacak lagi.
           </p>
         </CardContent>
       </Card>

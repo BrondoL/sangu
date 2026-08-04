@@ -479,7 +479,76 @@ describe('suggestAdjustment', () => {
   })
 })
 
-import { groupUnattached } from './budget'
+import { poolUnattached, groupUnattached } from './budget'
+
+describe('poolUnattached', () => {
+  it('pools spending on a budget that is no longer rendered, not only the unattached', () => {
+    const pool = poolUnattached({
+      spending: [
+        { recurringExpenseId: null, month: '2026-07', note: 'Laundry', amount: 45_000 },
+        // 'listrik' was untracked: it has no series on the page, so nothing
+        // else on the page can show this money.
+        { recurringExpenseId: 'listrik', month: '2026-07', note: null, amount: 500_000 },
+        { recurringExpenseId: 'jajan', month: '2026-07', note: null, amount: 25_000 },
+      ],
+      budgetIds: ['jajan', 'makan'],
+    })
+    expect(pool.spending.map((s) => s.amount)).toEqual([45_000, 500_000])
+    expect(pool.total).toBe(545_000)
+  })
+
+  it('leaves a rendered budget alone, so a retired one is never counted twice', () => {
+    // A retired budget that is still tracked keeps its own series and its
+    // "Non-aktif" badge. Pooling it here would show its spending in two places.
+    const pool = poolUnattached({
+      spending: [
+        { recurringExpenseId: 'skincare', month: '2026-06', note: null, amount: 120_000 },
+      ],
+      budgetIds: ['jajan', 'skincare'],
+    })
+    expect(pool.spending).toEqual([])
+    expect(pool.total).toBe(0)
+  })
+
+  it('totals rows that no note grouping will ever surface', () => {
+    const spending = [
+      { recurringExpenseId: null, month: '2026-06', note: null, amount: 80_000 },
+      { recurringExpenseId: null, month: '2026-07', note: '   ', amount: 60_000 },
+      { recurringExpenseId: 'listrik', month: '2026-08', note: null, amount: 500_000 },
+    ]
+    const pool = poolUnattached({ spending, budgetIds: ['jajan'] })
+    // Nothing here has a note that repeats, so the section lists nothing — the
+    // total is the only place this 640.000 is visible.
+    expect(groupUnattached({ spending: pool.spending })).toEqual([])
+    expect(pool.total).toBe(640_000)
+  })
+
+  it('keeps the shape groupUnattached reads, so the two stay in step', () => {
+    const pool = poolUnattached({
+      spending: ['2026-06', '2026-07', '2026-08'].map((month) => ({
+        recurringExpenseId: 'listrik',
+        month,
+        note: 'Listrik',
+        amount: 300_000,
+      })),
+      budgetIds: [],
+    })
+    // Spending on an untracked budget can name a budget you are missing just as
+    // well as spending that never had one.
+    expect(groupUnattached({ spending: pool.spending })).toEqual([
+      {
+        note: 'Listrik',
+        months: 3,
+        total: 900_000,
+        perMonth: [
+          { month: '2026-06', total: 300_000 },
+          { month: '2026-07', total: 300_000 },
+          { month: '2026-08', total: 300_000 },
+        ],
+      },
+    ])
+  })
+})
 
 describe('groupUnattached', () => {
   it('groups a recurring note across months, keeping the spelling first seen', () => {

@@ -266,6 +266,21 @@ recurs in three or more months with a meaningful total is surfaced as "this
 looks like a budget you do not have yet", with the total per month. That is the
 second half of the goal: not just adjusting budgets, but noticing missing ones.
 
+"Unattached" here means every row no series on this page can claim: spending
+with no budget, and spending against a budget that is not among the ones drawn
+above. The second kind is the same money Belanja counts as "tak terduga", and
+it has to be pooled the same way — otherwise untracking a budget takes its
+recorded spending off this page entirely, matching no series and excluded from
+the grouping too. The pool is built from the same budget list the series come
+from, so the two cannot disagree; a retired budget that is still tracked has
+its own series with a "Non-aktif" badge and is never pooled here.
+
+Beside the heading, the total of that whole pool across the window. The list
+alone cannot carry it: grouping is by note, so a row with no note, or a note
+that never repeats, reaches no group and its money would be invisible. The
+grouping answers "which budget am I missing"; the total answers "how much is
+sitting outside my budgets at all".
+
 The grouping's honest limit: "laundry" and "Laundry" merge, "laundry" and "cuci
 baju" do not. The note field's suggestions (below) are what actually make this
 work; normalisation only cleans up the edges.
@@ -292,6 +307,9 @@ it pure and tested in `lib/`.
   keep out of the grading — the page passes the current one. Excluded from
   grading only: that month's snapshot is still what the suggestion is compared
   against.
+- `poolUnattached(spending, budgetIds)` → the rows no rendered series can claim,
+  and their total. Both halves of Riwayat's second card read this, so the money
+  cannot fall between them.
 - `groupUnattached(spending, months)` → recurring notes and their monthly totals.
 
 Each gets a test file alongside, as `calculations`, `generate`, `goals`,
@@ -311,8 +329,10 @@ the rest of `lib/queries/`.
 - **Untracking a budget** keeps its history. Re-tracking it later shows the
   months it was away as gaps, not zeros. Spending already filed against it has
   no line to sit under any more, so on the month page it reads as "tak terduga"
-  and counts towards that total — visible and deletable. Untracking must not be
-  able to make recorded money vanish from the screen.
+  and counts towards that total — visible and deletable. On Riwayat it joins
+  the unattached pool, so it counts towards that page's tak-terduga total and
+  can still surface as a budget worth having. Untracking must not be able to
+  make recorded money vanish from the screen, on either page.
 - **Editing a spending row's date** moves it between months; both months'
   figures follow.
 
