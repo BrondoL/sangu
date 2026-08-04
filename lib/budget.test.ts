@@ -184,6 +184,7 @@ describe('compareAcrossMonths', () => {
 })
 
 import { suggestAdjustment } from './budget'
+import type { BudgetSeries } from './budget'
 
 const series = (points: [string, number | null, number][]): BudgetSeries => ({
   id: 'jajan',
