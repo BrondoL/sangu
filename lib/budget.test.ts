@@ -163,4 +163,22 @@ describe('compareAcrossMonths', () => {
     expect(series.points.map((p) => p.month)).toEqual(months)
     expect(series.points.map((p) => p.spent)).toEqual([900_000, 0, 0, 140_000])
   })
+
+  it('still records spending in a month that was never snapshotted', () => {
+    const [series] = compareAcrossMonths({
+      budgets,
+      snapshots: [
+        { recurringExpenseId: 'jajan', month: '2026-07', amount: 1_750_000 },
+      ],
+      spending: [
+        { recurringExpenseId: 'jajan', month: '2026-06', amount: 1_320_000 },
+      ],
+      months,
+    })
+    const june = series.points.find((p) => p.month === '2026-06')!
+    // The budget is unknown, but the money was still spent. Reporting 0 here
+    // would turn a month the user forgot to set up into a month they lived free.
+    expect(june.budget).toBeNull()
+    expect(june.spent).toBe(1_320_000)
+  })
 })
