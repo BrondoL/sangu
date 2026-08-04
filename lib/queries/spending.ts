@@ -202,6 +202,11 @@ export async function setBudgetAmount(recurringExpenseId: string, amount: number
  * than from the definition. The page has a month picker: without this, opening
  * August in October would hold August's spending against October's budget,
  * which is the exact drift budget_months exists to prevent.
+ *
+ * `amount` is null when the month has no snapshot. Only the current month is
+ * ever snapshotted, so any past month the picker reaches may be a gap — the
+ * same gap Riwayat already draws. For the current month `ensureBudgetSnapshots`
+ * runs before this read, so an active tracked budget always has an amount.
  */
 export async function listBudgetsForMonth(month: string) {
   const supabase = await createClient()
@@ -220,9 +225,15 @@ export async function listBudgetsForMonth(month: string) {
   const snapshot = new Map(
     (snaps ?? []).map((s) => [s.recurring_expense_id, s.amount])
   )
-  // A budget tracked only after the month had passed has no snapshot for it;
-  // its current amount is then the only figure that exists.
-  return tracked.map((b) => ({ ...b, amount: snapshot.get(b.id) ?? b.amount }))
+  // A month with no snapshot is a gap, and it stays one. Falling back to the
+  // definition's amount here would grade June's spending against August's
+  // budget and print a red "Lebih" against a figure that never applied to June
+  // — while Riwayat, reading the same absent row, calls that month "belum
+  // tercatat". One of the two would have to be lying; this is the one that was.
+  return tracked.map((b) => ({
+    ...b,
+    amount: snapshot.get(b.id) ?? null,
+  }))
 }
 
 /** Snapshots and spending for a window of months, shaped for `lib/budget.ts`. */

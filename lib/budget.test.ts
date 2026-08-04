@@ -95,6 +95,73 @@ describe('summarizeBudgetMonth', () => {
     expect(s.lines.find((l) => l.id === 'jajan')!.fill).toBeCloseTo(0.708571, 5)
   })
 
+  it('reports the spend but no budget when the month was never snapshotted', () => {
+    const s = summarizeBudgetMonth({
+      budgets: [{ id: 'jajan', name: 'Jajan', amount: null }],
+      spending: [
+        { recurringExpenseId: 'jajan', amount: 2_000_000 },
+        { recurringExpenseId: 'jajan', amount: 400_000 },
+      ],
+    })
+    const jajan = s.lines[0]
+    // The money was really spent, so it is reported. The budget was never
+    // recorded for this month, so nothing may be claimed against it — an
+    // unrecorded budget is a gap, and "Lebih 400.000" against today's figure
+    // is a verdict on a month that figure never applied to.
+    expect(jajan.spent).toBe(2_400_000)
+    expect(jajan.budget).toBeNull()
+    expect(jajan.remaining).toBeNull()
+    expect(jajan.over).toBeNull()
+  })
+
+  it('never divides by an unrecorded budget', () => {
+    const s = summarizeBudgetMonth({
+      budgets: [{ id: 'jajan', name: 'Jajan', amount: null }],
+      spending: [{ recurringExpenseId: 'jajan', amount: 2_400_000 }],
+    })
+    // No ratio, and a bar that draws nothing rather than a full red one.
+    expect(s.lines[0].ratio).toBeNull()
+    expect(s.lines[0].fill).toBe(0)
+  })
+
+  it('leaves an unrecorded budget out of the month total budget', () => {
+    const s = summarizeBudgetMonth({
+      budgets: [
+        { id: 'jajan', name: 'Jajan', amount: null },
+        { id: 'makan', name: 'Makan', amount: 1_000_000 },
+      ],
+      spending: [
+        { recurringExpenseId: 'jajan', amount: 2_400_000 },
+        { recurringExpenseId: null, amount: 50_000 },
+      ],
+    })
+    // A budget nobody recorded contributes no number to a sum of budgets.
+    expect(s.totalBudget).toBe(1_000_000)
+    // Its spending still counts, though — it is money that left the account.
+    expect(s.totalSpent).toBe(2_450_000)
+  })
+
+  it('tells an unrecorded budget apart from a budget of zero', () => {
+    const s = summarizeBudgetMonth({
+      budgets: [
+        { id: 'gap', name: 'Belum tercatat', amount: null },
+        { id: 'zero', name: 'Self Reward Nabil', amount: 0 },
+      ],
+      spending: [
+        { recurringExpenseId: 'gap', amount: 75_000 },
+        { recurringExpenseId: 'zero', amount: 75_000 },
+      ],
+    })
+    const gap = s.lines.find((l) => l.id === 'gap')!
+    const zero = s.lines.find((l) => l.id === 'zero')!
+    // A budget of zero is a decision: everything spent against it is over.
+    expect(zero.budget).toBe(0)
+    expect(zero.over).toBe(75_000)
+    // A budget never recorded is not that decision, and says nothing.
+    expect(gap.budget).toBeNull()
+    expect(gap.over).toBeNull()
+  })
+
   it('fills a zero budget only once something is spent against it', () => {
     const spent = summarizeBudgetMonth({
       budgets,

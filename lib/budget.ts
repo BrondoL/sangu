@@ -3,28 +3,37 @@
  * of it is testable. Amounts are integer rupiah throughout.
  */
 
-export interface BudgetLine {
+/**
+ * `budget: null` means no snapshot recorded this budget for the month — a gap,
+ * not a zero, exactly as `MonthPoint.budget` below. Grading the month's spend
+ * against whatever the definition holds today would invent a budget the month
+ * never had. `remaining` and `over` go null with it, in a union rather than
+ * three independent nullables, so a renderer cannot claim "Sisa Rp 0" against
+ * a budget nobody wrote down: checking `budget === null` narrows all three.
+ */
+export type BudgetLine = {
   id: string
   name: string
-  budget: number
   spent: number
-  remaining: number
-  over: number
-  /** null when the budget is 0 — there is no ratio to a zero budget. */
+  /** null when the budget is 0 or unrecorded — there is no ratio to either. */
   ratio: number | null
-  /** 0–1, clamped, ready to use as a progress-bar width. */
+  /** 0–1, clamped, ready to use as a progress-bar width. 0 when unrecorded. */
   fill: number
-}
+} & (
+  | { budget: number; remaining: number; over: number }
+  | { budget: null; remaining: null; over: null }
+)
 
 export interface BudgetMonthSummary {
   lines: BudgetLine[]
   unattachedTotal: number
+  /** Recorded budgets only. A line with no snapshot adds nothing to this. */
   totalBudget: number
   totalSpent: number
 }
 
 export function summarizeBudgetMonth(input: {
-  budgets: { id: string; name: string; amount: number }[]
+  budgets: { id: string; name: string; amount: number | null }[]
   spending: { recurringExpenseId: string | null; amount: number }[]
 }): BudgetMonthSummary {
   const tracked = new Set(input.budgets.map((b) => b.id))
@@ -50,29 +59,43 @@ export function summarizeBudgetMonth(input: {
     )
   }
 
-  const lines = input.budgets.map((b) => {
+  const lines: BudgetLine[] = input.budgets.map((b) => {
     const spent = spentBy.get(b.id) ?? 0
+    const budget = b.amount
+
+    // No snapshot for this month: the spend is real and still has to be
+    // reported, but "sisa" and "lebih" are claims against a number nobody
+    // recorded. Saying nothing is the only honest answer, and there is no
+    // division to do.
+    if (budget === null) {
+      return {
+        id: b.id,
+        name: b.name,
+        budget: null,
+        spent,
+        remaining: null,
+        over: null,
+        ratio: null,
+        fill: 0,
+      }
+    }
+
     return {
       id: b.id,
       name: b.name,
-      budget: b.amount,
+      budget,
       spent,
-      remaining: Math.max(0, b.amount - spent),
-      over: Math.max(0, spent - b.amount),
-      ratio: b.amount === 0 ? null : spent / b.amount,
-      fill:
-        b.amount === 0
-          ? spent > 0
-            ? 1
-            : 0
-          : Math.min(1, spent / b.amount),
+      remaining: Math.max(0, budget - spent),
+      over: Math.max(0, spent - budget),
+      ratio: budget === 0 ? null : spent / budget,
+      fill: budget === 0 ? (spent > 0 ? 1 : 0) : Math.min(1, spent / budget),
     }
   })
 
   return {
     lines,
     unattachedTotal,
-    totalBudget: input.budgets.reduce((t, b) => t + b.amount, 0),
+    totalBudget: input.budgets.reduce((t, b) => t + (b.amount ?? 0), 0),
     totalSpent: lines.reduce((t, l) => t + l.spent, 0) + unattachedTotal,
   }
 }
