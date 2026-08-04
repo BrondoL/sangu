@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Amount, Eyebrow, MoneyRow } from '@/components/kwitansi'
+import { Amount, MoneyRow, SectionHead } from '@/components/kwitansi'
 import { RupiahInput } from '@/components/rupiah-input'
 import { FormDialog } from '@/components/form-dialog'
 import { DeleteButton } from '@/components/delete-button'
@@ -106,18 +106,20 @@ export function InstallmentsTab({
       {items.length > 0 && (
         <Card>
           <CardContent>
-            <Eyebrow>Sisa utang cicilan</Eyebrow>
+            {/* A section title in this app is an eyebrow over a rule, which is
+                what SectionHead draws. This card was carrying a bare eyebrow
+                and no rule, so it read as the one card that had been set by a
+                different hand. */}
+            <SectionHead title="Sisa utang cicilan" />
             {summary.lastPaymentMonth === null ? (
               // Every instalment in the register is settled. A column of Rp 0
               // would read as a bug rather than as good news, so it says so.
-              <p className="text-muted-foreground mt-1.5 text-sm">
+              <p className="text-muted-foreground text-sm">
                 Semua cicilan sudah lunas. Tidak ada yang tersisa.
               </p>
             ) : (
               <>
-                <div className="mt-1.5">
-                  <Amount value={summary.totalRemaining} size="lg" />
-                </div>
+                <Amount value={summary.totalRemaining} size="lg" />
                 <p className="text-muted-foreground mt-1 text-xs text-pretty">
                   Setelah cicilan bulan ini dibayar. Termasuk yang belum mulai.
                 </p>

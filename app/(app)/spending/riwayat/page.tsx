@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
-import { Eyebrow, PageHeader } from '@/components/kwitansi'
+import { Amount, MoneyRow, PageHeader, SectionHead } from '@/components/kwitansi'
 import { SeriesRow } from '@/components/spending/series-row'
 import { listTrackedBudgets, getSpendingHistory } from '@/lib/queries/spending'
 import {
@@ -10,7 +10,6 @@ import {
   groupUnattached,
 } from '@/lib/budget'
 import { currentMonthParam, shiftMonth, toMonthParam, formatMonthLabel } from '@/lib/month'
-import { formatRupiah } from '@/lib/format'
 import { applyAdjustmentAction } from '../actions'
 
 const WINDOW = 6
@@ -57,12 +56,16 @@ export default async function SpendingHistoryPage() {
 
       <Card>
         <CardContent>
+          {/* The unit sits in the header because the tables below are set in
+              digits only, the way the dashboard's account table is. */}
+          <SectionHead title="Pos yang dilacak" aside="dalam rupiah" />
+
           {series.length === 0 ? (
             <p className="text-muted-foreground text-sm">
               Belum ada pos yang dilacak.
             </p>
           ) : (
-            <ul className="divide-border divide-y">
+            <ul className="divide-border -mt-2 divide-y">
               {series.map((s) => (
                 <SeriesRow
                   key={s.id}
@@ -83,38 +86,45 @@ export default async function SpendingHistoryPage() {
       </Card>
 
       <Card>
-        <CardContent className="space-y-2.5">
+        <CardContent>
           {/* The total is beside the heading because the list below cannot
               hold it: grouping is by note, so a row with no note — or a note
               that never repeats — reaches no group. Without this figure that
               money is nowhere on the page. */}
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <Eyebrow>Mungkin budget baru</Eyebrow>
-            <span className="text-muted-foreground text-xs">
-              total tak terduga{' '}
-              <span className="amount text-foreground text-sm">
-                {formatRupiah(unattached.total)}
-              </span>
-            </span>
-          </div>
+          <SectionHead
+            title="Mungkin budget baru"
+            aside={
+              // Inline rather than a nested flex row: at 360px the label and
+              // the figure need to be able to wrap under each other instead of
+              // pushing the heading beside them off the card.
+              <>
+                total tak terduga{' '}
+                <Amount
+                  value={unattached.total}
+                  size="sm"
+                  className="text-foreground"
+                />
+              </>
+            }
+          />
           {newBudgets.length === 0 ? (
-            <p className="text-muted-foreground text-xs">
+            <p className="text-muted-foreground text-sm">
               Belum ada catatan tak terduga yang berulang cukup sering.
             </p>
           ) : (
-            <ul className="divide-border divide-y">
+            <ul className="divide-border/60 -my-1 divide-y">
               {newBudgets.map((g) => (
-                <li key={g.note} className="flex items-baseline gap-3 py-2">
-                  <span className="flex-1 text-sm">{g.note}</span>
-                  <span className="text-muted-foreground text-xs">
-                    {g.months} bulan
-                  </span>
-                  <span className="amount text-sm">{formatRupiah(g.total)}</span>
+                <li key={g.note}>
+                  <MoneyRow
+                    label={g.note}
+                    hint={`${g.months} bulan`}
+                    value={g.total}
+                  />
                 </li>
               ))}
             </ul>
           )}
-          <p className="text-muted-foreground text-xs">
+          <p className="text-muted-foreground border-rule mt-3 border-t pt-3 text-xs">
             Pengeluaran tak terduga yang namanya berulang. Kalau memang rutin,
             daftarkan sebagai pengeluaran rutin di Pengaturan lalu centang di
             tab Dilacak. Totalnya menghitung semua pengeluaran di rentang ini

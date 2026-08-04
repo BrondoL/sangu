@@ -1,3 +1,4 @@
+import { Amount } from '@/components/kwitansi'
 import { formatRupiah } from '@/lib/format'
 import type { BudgetLine } from '@/lib/budget'
 
@@ -13,18 +14,14 @@ export function BudgetRow({ line }: { line: BudgetLine }) {
 
   return (
     <li className="space-y-1.5 py-3">
+      {/* The spent figure is the row's headline and sits on the money rail, the
+          same shape a goal card uses: the amount reached above the bar, what it
+          is measured against as a caption below. It used to be half of a
+          "Rp a / Rp b" pair set in muted extra-small, which put the one figure
+          this page exists to show in the quietest type on it. */}
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-sm">{line.name}</span>
-        <span className="amount text-muted-foreground text-xs">
-          {line.budget === null ? (
-            <>
-              {formatRupiah(line.spent)}{' '}
-              <span className="text-muted-foreground">/ budget belum tercatat</span>
-            </>
-          ) : (
-            `${formatRupiah(line.spent)} / ${formatRupiah(line.budget)}`
-          )}
-        </span>
+        <span className="min-w-0 truncate text-sm">{line.name}</span>
+        <Amount value={line.spent} size="sm" tone={over ? 'deficit' : 'default'} />
       </div>
 
       {line.budget === null ? (
@@ -49,8 +46,8 @@ export function BudgetRow({ line }: { line: BudgetLine }) {
         {line.budget === null
           ? 'Belum ada budget tercatat, jadi sisanya tidak bisa dihitung.'
           : over
-            ? `Lebih ${formatRupiah(line.over)}`
-            : `Sisa ${formatRupiah(line.remaining)}`}
+            ? `dari ${formatRupiah(line.budget)} · lebih ${formatRupiah(line.over)}`
+            : `dari ${formatRupiah(line.budget)} · sisa ${formatRupiah(line.remaining)}`}
       </p>
     </li>
   )
