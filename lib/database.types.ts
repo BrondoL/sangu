@@ -47,6 +47,35 @@ export type Database = {
         }
         Relationships: []
       }
+      budget_months: {
+        Row: {
+          amount: number
+          month: string
+          recurring_expense_id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          month: string
+          recurring_expense_id: string
+          user_id?: string
+        }
+        Update: {
+          amount?: number
+          month?: string
+          recurring_expense_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_months_recurring_expense_id_fkey"
+            columns: ["recurring_expense_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       installments: {
         Row: {
           account_id: string
@@ -298,6 +327,70 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      spending: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          note: string | null
+          occurred_on: string
+          recurring_expense_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          occurred_on: string
+          recurring_expense_id?: string | null
+          user_id?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          occurred_on?: string
+          recurring_expense_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spending_recurring_expense_id_fkey"
+            columns: ["recurring_expense_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tracked_budgets: {
+        Row: {
+          recurring_expense_id: string
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          recurring_expense_id: string
+          sort_order?: number
+          user_id?: string
+        }
+        Update: {
+          recurring_expense_id?: string
+          sort_order?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracked_budgets_recurring_expense_id_fkey"
+            columns: ["recurring_expense_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_expenses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
