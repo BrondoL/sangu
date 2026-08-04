@@ -13,6 +13,18 @@ const LINKS = [
   { href: '/settings', label: 'Pengaturan', icon: Settings },
 ]
 
+/**
+ * Both navs are on screen from the first paint, so leaving prefetch on means every
+ * page load quietly fires five more requests for routes the user may never open.
+ * Each one is a dynamic render, and each one passes through the proxy and renews
+ * the session on its own — five racing renewals of the same rotating refresh token,
+ * on a phone that is usually on mobile data.
+ *
+ * Little is given up: every destination has a loading.tsx, so a tap still paints a
+ * skeleton immediately rather than waiting on the server.
+ */
+const PREFETCH = false
+
 function useIsActive() {
   const pathname = usePathname()
   return (href: string) => pathname === href || pathname.startsWith(`${href}/`)
@@ -32,6 +44,7 @@ export function BottomNav() {
             <li key={href} className="flex-1">
               <Link
                 href={href}
+                prefetch={PREFETCH}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'relative flex flex-col items-center gap-1 py-2.5 transition-colors',
@@ -87,6 +100,7 @@ export function HeaderNav() {
             <li key={href}>
               <Link
                 href={href}
+                prefetch={PREFETCH}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'relative block rounded-md px-3 py-1.5 font-mono text-[0.7rem] tracking-[0.12em] uppercase transition-colors',
