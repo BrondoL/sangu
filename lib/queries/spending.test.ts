@@ -65,15 +65,6 @@ describe('the notes offered under the note field', () => {
 })
 
 describe('the budgets the Belanja page follows', () => {
-  type Row = {
-    recurring_expenses: {
-      id: string
-      name: string
-      default_amount: number
-      is_active: boolean
-    } | null
-  }
-
   function budgets(...names: string[]) {
     rows.current = names.map((name) => ({
       recurring_expenses: {
