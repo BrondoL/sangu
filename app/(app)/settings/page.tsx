@@ -25,6 +25,20 @@ function Count({ n }: { n: number }) {
   )
 }
 
+/**
+ * Six registers do not fit across a phone. The labels are set nowrap, so as
+ * flex-1 they refuse to shrink and drag the whole page into a sideways scroll;
+ * sized to their own text inside a scrolling strip, only the strip moves. From
+ * sm up the six do fit, so they go back to sharing the width evenly.
+ */
+function Tab({ value, children }: { value: string; children: React.ReactNode }) {
+  return (
+    <TabsTrigger value={value} className="flex-none sm:flex-1">
+      {children}
+    </TabsTrigger>
+  )
+}
+
 export default async function SettingsPage() {
   const [accounts, recurring, installments, savingsGoals, settings, trackable] =
     await Promise.all([
@@ -50,25 +64,30 @@ export default async function SettingsPage() {
       </PageHeader>
 
       <Tabs defaultValue="accounts">
-        <TabsList className="w-full">
+        {/* justify-start so the strip fills from the left once it overflows —
+            centred content would hide the first tab as readily as the last.
+            The scrollbar is suppressed because the tab clipped at the right
+            edge is the affordance, and a bar drawn inside a 32px strip sits on
+            top of the labels. */}
+        <TabsList className="w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {/* The count is the cheapest way to see which registers are still
               empty without opening each one. */}
-          <TabsTrigger value="accounts">
+          <Tab value="accounts">
             Rekening <Count n={accounts.length} />
-          </TabsTrigger>
-          <TabsTrigger value="recurring">
+          </Tab>
+          <Tab value="recurring">
             Rutin <Count n={recurring.length} />
-          </TabsTrigger>
-          <TabsTrigger value="installments">
+          </Tab>
+          <Tab value="installments">
             Cicilan <Count n={installments.length} />
-          </TabsTrigger>
-          <TabsTrigger value="savings">
+          </Tab>
+          <Tab value="savings">
             Target <Count n={savingsGoals.length} />
-          </TabsTrigger>
-          <TabsTrigger value="salary">Gaji</TabsTrigger>
-          <TabsTrigger value="tracked">
+          </Tab>
+          <Tab value="salary">Gaji</Tab>
+          <Tab value="tracked">
             Dilacak <Count n={trackable.filter((r) => r.tracked).length} />
-          </TabsTrigger>
+          </Tab>
         </TabsList>
 
         <TabsContent value="accounts" className="pt-4">
