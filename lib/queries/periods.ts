@@ -148,21 +148,22 @@ export async function generateMonth(month: string) {
   // 1. Ensure the period row exists.
   const { data: found, error: findErr } = await supabase
     .from('monthly_periods')
-    .select('id')
+    .select('id, excluded_source_ids')
     .eq('month', iso)
     .maybeSingle()
   if (findErr) throw findErr
 
-  let periodId = found?.id
-  if (!periodId) {
+  let period = found
+  if (!period) {
     const { data: created, error: createErr } = await supabase
       .from('monthly_periods')
       .insert({ month: iso })
-      .select('id')
+      .select('id, excluded_source_ids')
       .single()
     if (createErr) throw createErr
-    periodId = created.id
+    period = created
   }
+  const periodId = period.id
 
   // 2. Load definitions.
   const [
@@ -247,6 +248,7 @@ export async function generateMonth(month: string) {
     previousItems,
     existingSourceIds,
     existingCardBillAccountIds,
+    excludedSourceIds: new Set(period.excluded_source_ids),
   })
 
   if (planned.length > 0) {

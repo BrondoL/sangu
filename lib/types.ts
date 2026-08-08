@@ -103,6 +103,7 @@ export interface GenerateInput {
   previousItems: PreviousItem[] | null
   existingSourceIds: Set<string>       // recurring/installment/saving already in target month
   existingCardBillAccountIds: Set<string>
+  excludedSourceIds: Set<string>       // deliberately left out of the target month
 }
 
 export interface PlannedItem {
