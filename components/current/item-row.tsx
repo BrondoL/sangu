@@ -60,9 +60,22 @@ export function ItemRow({
         className="w-32 shrink-0 sm:w-36"
       />
 
-      {/* Only manual rows are removable; generated ones come back next month. */}
-      {item.source_id === null && item.category !== 'card_bill' && (
-        <DeleteButton id={item.id} label={item.name} action={deleteItemAction} />
+      {/* Card bills are keyed by account rather than by a definition, so the
+          exclusion that keeps a deleted row deleted has nothing to record for
+          them — they stay undeletable. Manual rows are always 'expense'
+          (add-item-dialog posts it as a hidden field), so dropping the old
+          source_id check admits exactly the generated rows and nothing else. */}
+      {item.category !== 'card_bill' && (
+        <DeleteButton
+          id={item.id}
+          label={item.name}
+          consequence={
+            item.source_id === null
+              ? undefined
+              : 'Hilang dari bulan ini saja. Definisinya di Pengaturan tidak disentuh, dan bulan depan muncul lagi seperti biasa.'
+          }
+          action={deleteItemAction}
+        />
       )}
     </div>
   )

@@ -11,6 +11,7 @@ const empty = (over: Partial<GenerateInput>): GenerateInput => ({
   previousItems: null,
   existingSourceIds: new Set(),
   existingCardBillAccountIds: new Set(),
+  excludedSourceIds: new Set(),
   ...over,
 })
 
@@ -96,5 +97,70 @@ describe('planNewMonthItems', () => {
       })
     )
     expect(items).toHaveLength(0)
+  })
+
+  it('skips a recurring definition the month excluded, and only that one', () => {
+    const items = planNewMonthItems(
+      empty({
+        recurringExpenses: [
+          { id: 'r1', name: 'Netflix', defaultAmount: 54_000, accountId: 'a', paymentMethod: 'debit' },
+          { id: 'r2', name: 'Listrik', defaultAmount: 300_000, accountId: 'a', paymentMethod: 'debit' },
+        ],
+        excludedSourceIds: new Set(['r1']),
+      })
+    )
+    expect(items.map((i) => i.name)).toEqual(['Listrik'])
+  })
+
+  it('skips excluded instalments and savings goals too', () => {
+    const items = planNewMonthItems(
+      empty({
+        installments: [
+          { id: 'i1', name: 'Motor', monthlyAmount: 1_000_000, tenorMonths: 12, startMonth: '2026-01-01', accountId: 'a', paymentMethod: 'debit' },
+        ],
+        savingsGoals: [
+          { id: 's1', name: 'Dana darurat', monthlyAmount: 500_000, accountId: 'a' },
+        ],
+        excludedSourceIds: new Set(['i1', 's1']),
+      })
+    )
+    expect(items).toHaveLength(0)
+  })
+
+  it('plans nothing, and nothing twice, when an id is both present and excluded', () => {
+    const items = planNewMonthItems(
+      empty({
+        recurringExpenses: [
+          { id: 'r1', name: 'Listrik', defaultAmount: 300_000, accountId: 'a', paymentMethod: 'debit' },
+        ],
+        existingSourceIds: new Set(['r1']),
+        excludedSourceIds: new Set(['r1']),
+      })
+    )
+    expect(items).toHaveLength(0)
+  })
+
+  it('plans the item again once the exclusion is lifted, inheriting the real amount', () => {
+    const items = planNewMonthItems(
+      empty({
+        recurringExpenses: [
+          { id: 'r1', name: 'Netflix', defaultAmount: 54_000, accountId: 'a', paymentMethod: 'debit' },
+        ],
+        previousItems: [{ sourceType: 'recurring', sourceId: 'r1', amount: 61_000 }],
+        excludedSourceIds: new Set(),
+      })
+    )
+    expect(items).toHaveLength(1)
+    expect(items[0].amount).toBe(61_000)
+  })
+
+  it('leaves card bills alone — they are keyed by account, not by a source id', () => {
+    const items = planNewMonthItems(
+      empty({
+        creditCardAccountIds: ['mandiri'],
+        excludedSourceIds: new Set(['mandiri']),
+      })
+    )
+    expect(items.filter((i) => i.category === 'card_bill')).toHaveLength(1)
   })
 })

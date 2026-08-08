@@ -1,6 +1,6 @@
 # Sangu — Progress & Handoff
 
-Last updated: 2026-08-04
+Last updated: 2026-08-08
 
 Companion to `docs/superpowers/plans/2026-08-03-sangu.md` (step checkboxes there
 are ticked through Task 11) and `docs/superpowers/specs/2026-08-03-sangu-design.md`.
@@ -448,3 +448,67 @@ mechanisms are verified; the layer that actually reads and writes the ledger is
 not, and that gap is a stated limit rather than an oversight. Neither is any
 other component: the two here were chosen because they are the branch's most
 fragile and least observable, not because the rest were checked and cleared.
+
+## Undo on the month page, 2026-08-08
+
+Bulan Ini had no way back from either of its two creating actions. A row that
+came from a definition could not be deleted, and a month opened by mistake
+stayed opened. Both now have an undo, and each rests on a different mechanism.
+
+**A row can leave one month.** Deleting a generated row is a real delete, and
+the row's `source_id` is appended to `excluded_source_ids`, a `uuid[]` added to
+`monthly_periods` by migration `0005_period_exclusions.sql` (applied to the
+remote project on 2026-08-08). That column is the whole point of the feature.
+`generateMonth` decides what to create by asking which source ids are already in
+the period, so without a record of the omission the next press of Sinkron
+definisi puts the row straight back. `planNewMonthItems` now folds the excluded
+ids and the present ids into one `skip` set, which is why the rule lives in a
+pure function and has tests rather than living in the query layer where nothing
+could hold it.
+
+The alternative considered and rejected was an `is_removed` flag on
+`monthly_items`. It would have kept the amount and made undo trivial, but it
+would have obliged all four readers of that table — `getItems`,
+`getGoalProgress`, and both dashboard queries — to filter forever, and a
+forgotten filter inflates a total silently with no test in the way. Deleting
+outright means there is nothing to filter and no calculation query changed.
+
+Restoring is a footnote under the groups: clear the array, then sync. The items
+return through the ordinary generation path, which matters because they return
+with their `source_id` intact — a savings row re-added by hand would carry a
+null one and stop counting toward goal progress.
+
+**A month can be dropped whole.** One delete on `monthly_periods`;
+`monthly_items` and `monthly_balances` follow through the cascades already
+declared in `0001_init.sql`, and `actual_salary`, `note` and
+`excluded_source_ids` live on the deleted row. Spending survives on purpose:
+`spending` and `budget_months` are keyed by date, not `period_id`, so no cascade
+reaches them. Cancelling a plan should not erase the record of money that
+actually left the account.
+
+The trigger sits at the foot of the page rather than beside Sinkron definisi,
+and its dialog names what will be lost —
+`describePeriodContents` in `lib/period-summary.ts`, pure and tested, with zero
+counting as empty so a Rp 0 balance never pads the warning. No month is locked:
+a month filled in by mistake is the one you most need to remove, so reporting
+was chosen over restricting.
+
+**Knock-on worth remembering:** a new month inherits amounts from the month
+before it. Delete August, generate September afterwards, and September finds no
+August and falls back to the definition amounts. A September that already exists
+does not change, because inheritance is resolved once at generation time.
+
+**Verified.** `npm test` is 181 passing across 16 files (up from 176: five
+exclusion cases in `lib/generate.test.ts`, five sentence cases in the new
+`lib/period-summary.test.ts`). Lint and build are clean. All eighteen browser
+checks in the plan were walked by the user on 2026-08-08 and all passed —
+including the two that are the point of the work: Sinkron definisi does not
+resurrect an excluded row, and deleting a month leaves Belanja and the
+definitions untouched.
+
+**Still not covered.** `lib/queries/` remains untested, `deleteItem`,
+`clearExclusions` and `deletePeriod` included, for the reasons already stated
+above. `deleteItem` is read-modify-write on the array, so two simultaneous
+deletions could lose one exclusion; single user, one tab, and every deletion
+sits behind a confirmation, so this was accepted rather than solved with an RPC.
+The failure mode is a resurrected row on the next sync, not lost data.

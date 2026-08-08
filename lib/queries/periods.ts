@@ -84,7 +84,64 @@ export async function addManualItem(input: {
 
 export async function deleteItem(id: string) {
   const supabase = await createClient()
+
+  // Read before deleting. A generated row's source_id has to be remembered on
+  // the period, or the next sync reads its absence as an omission and puts the
+  // row straight back.
+  const { data: item, error: readErr } = await supabase
+    .from('monthly_items')
+    .select('period_id, source_id')
+    .eq('id', id)
+    .single()
+  if (readErr) throw readErr
+
   const { error } = await supabase.from('monthly_items').delete().eq('id', id)
+  if (error) throw error
+
+  if (item.source_id) {
+    const { data: period, error: periodErr } = await supabase
+      .from('monthly_periods')
+      .select('excluded_source_ids')
+      .eq('id', item.period_id)
+      .single()
+    if (periodErr) throw periodErr
+
+    // Deduped: delete, restore, delete again must not stack copies of one id.
+    const next = [...new Set([...period.excluded_source_ids, item.source_id])]
+    const { error: writeErr } = await supabase
+      .from('monthly_periods')
+      .update({ excluded_source_ids: next })
+      .eq('id', item.period_id)
+    if (writeErr) throw writeErr
+  }
+
+  revalidateMonthViews()
+}
+
+export async function clearExclusions(periodId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('monthly_periods')
+    .update({ excluded_source_ids: [] })
+    .eq('id', periodId)
+  if (error) throw error
+  revalidateMonthViews()
+}
+
+// --- Undoing a month ---
+
+/**
+ * Removes the period itself. monthly_items and monthly_balances follow through
+ * the cascades declared in 0001_init.sql, and actual_salary, note and
+ * excluded_source_ids live on this row. Spending and budget history are keyed
+ * by date rather than period_id, so they are deliberately out of reach.
+ */
+export async function deletePeriod(periodId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('monthly_periods')
+    .delete()
+    .eq('id', periodId)
   if (error) throw error
   revalidateMonthViews()
 }
@@ -148,21 +205,22 @@ export async function generateMonth(month: string) {
   // 1. Ensure the period row exists.
   const { data: found, error: findErr } = await supabase
     .from('monthly_periods')
-    .select('id')
+    .select('id, excluded_source_ids')
     .eq('month', iso)
     .maybeSingle()
   if (findErr) throw findErr
 
-  let periodId = found?.id
-  if (!periodId) {
+  let period = found
+  if (!period) {
     const { data: created, error: createErr } = await supabase
       .from('monthly_periods')
       .insert({ month: iso })
-      .select('id')
+      .select('id, excluded_source_ids')
       .single()
     if (createErr) throw createErr
-    periodId = created.id
+    period = created
   }
+  const periodId = period.id
 
   // 2. Load definitions.
   const [
@@ -247,6 +305,7 @@ export async function generateMonth(month: string) {
     previousItems,
     existingSourceIds,
     existingCardBillAccountIds,
+    excludedSourceIds: new Set(period.excluded_source_ids),
   })
 
   if (planned.length > 0) {

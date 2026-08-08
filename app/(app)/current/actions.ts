@@ -5,6 +5,8 @@ import {
   toggleItemPaid,
   addManualItem,
   deleteItem,
+  clearExclusions,
+  deletePeriod,
   setActualSalary,
   setBalance,
   setNote,
@@ -55,6 +57,28 @@ export async function toggleItemPaidAction(
 export async function deleteItemAction(id: string): Promise<ActionState> {
   try {
     await deleteItem(id)
+    return { ok: true }
+  } catch (e) {
+    return fail(e)
+  }
+}
+
+export async function restoreExcludedAction(
+  periodId: string,
+  month: string
+): Promise<ActionState> {
+  try {
+    await clearExclusions(periodId)
+    await generateMonth(month)
+    return { ok: true }
+  } catch (e) {
+    return fail(e)
+  }
+}
+
+export async function deleteMonthAction(periodId: string): Promise<ActionState> {
+  try {
+    await deletePeriod(periodId)
     return { ok: true }
   } catch (e) {
     return fail(e)

@@ -35,12 +35,17 @@ export function planNewMonthItems(input: GenerateInput): PlannedItem[] {
     previousItems,
     existingSourceIds,
     existingCardBillAccountIds,
+    excludedSourceIds,
   } = input
+
+  // Already in the month, or deliberately left out of it. The planner treats
+  // both the same way: not mine to create.
+  const skip = new Set([...existingSourceIds, ...excludedSourceIds])
 
   const items: PlannedItem[] = []
 
   for (const r of recurringExpenses) {
-    if (existingSourceIds.has(r.id)) continue
+    if (skip.has(r.id)) continue
     items.push({
       name: r.name,
       amount: inheritedAmount(previousItems, r.id, r.defaultAmount),
@@ -53,7 +58,7 @@ export function planNewMonthItems(input: GenerateInput): PlannedItem[] {
   }
 
   for (const i of installments) {
-    if (existingSourceIds.has(i.id)) continue
+    if (skip.has(i.id)) continue
     if (!isInstallmentActive(i.startMonth, i.tenorMonths, targetMonth)) continue
     items.push({
       name: i.name,
@@ -67,7 +72,7 @@ export function planNewMonthItems(input: GenerateInput): PlannedItem[] {
   }
 
   for (const s of savingsGoals) {
-    if (existingSourceIds.has(s.id)) continue
+    if (skip.has(s.id)) continue
     items.push({
       name: s.name,
       amount: inheritedAmount(previousItems, s.id, s.monthlyAmount),

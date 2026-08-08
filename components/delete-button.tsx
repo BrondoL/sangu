@@ -21,6 +21,8 @@ export function DeleteButton({
   id,
   label,
   description,
+  consequence = 'Data yang dihapus tidak bisa dikembalikan.',
+  triggerLabel,
   action,
 }: {
   id: string
@@ -32,6 +34,18 @@ export function DeleteButton({
    * callers name a unique record and pass nothing here.
    */
   description?: string
+  /**
+   * What confirming actually costs. Deletion is normally final, which is the
+   * default. A generated row on a month is the exception: it comes back next
+   * month on its own, and can be restored into this one.
+   */
+  consequence?: string
+  /**
+   * Renders the trigger as a muted text button carrying this label, instead of
+   * the ghost trash icon. For a trigger that stands alone rather than sitting
+   * at the end of a row, where an icon would have nothing to be read against.
+   */
+  triggerLabel?: string
   action: (id: string) => Promise<ActionState>
 }) {
   const [pending, startTransition] = useTransition()
@@ -40,9 +54,20 @@ export function DeleteButton({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={`Hapus ${named}`}>
-          <Trash2 className="size-4" />
-        </Button>
+        {triggerLabel ? (
+          // The text is its own accessible name, so no aria-label here.
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground h-auto p-0 text-xs font-normal underline underline-offset-2"
+          >
+            {triggerLabel}
+          </Button>
+        ) : (
+          <Button variant="ghost" size="icon" aria-label={`Hapus ${named}`}>
+            <Trash2 className="size-4" />
+          </Button>
+        )}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -51,7 +76,7 @@ export function DeleteButton({
             {description && (
               <span className="text-foreground mb-1 block">{description}</span>
             )}
-            Data yang dihapus tidak bisa dikembalikan.
+            {consequence}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
