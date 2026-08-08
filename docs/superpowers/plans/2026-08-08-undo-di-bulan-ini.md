@@ -1,14 +1,17 @@
-# Removing a generated item from one month — Implementation Plan
+# Taking things back on /current — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Let a row generated from a definition be deleted from a single month, without the next "Sinkron definisi" putting it back, and with a way to undo.
+**Goal:** Two undo paths the month page never had. A row generated from a definition can be dropped from one month without the next "Sinkron definisi" putting it back (Tasks 1–5), and a month opened by mistake can be removed outright (Tasks 6–7).
 
-**Architecture:** The deleted row is really deleted; its `source_id` is recorded in a new `uuid[]` column on the period it belonged to. `planNewMonthItems` treats those ids exactly like ids already present in the month, so sync leaves them alone. Nothing that computes a number changes, because there is no hidden row to filter out. A muted line under the item groups clears the column and re-syncs, which brings the rows back through the ordinary generation path with their `source_id` intact.
+**Architecture:** For the row: the deletion is real, and the row's `source_id` is recorded in a new `uuid[]` column on the period. `planNewMonthItems` treats those ids exactly like ids already present in the month, so sync leaves them alone. Nothing that computes a number changes, because there is no hidden row to filter out. A muted line under the item groups clears the column and re-syncs, restoring the rows through the ordinary generation path with their `source_id` intact. For the month: one delete on `monthly_periods`, with items and balances following through the cascades already declared in `0001_init.sql`. Both affordances live at the foot of the page and share `DeleteButton`, which gains two additive props.
 
 **Tech Stack:** Next.js 16 (App Router, server actions), React 19, Supabase (Postgres + RLS), TypeScript, Vitest, Tailwind v4, shadcn/radix, sonner.
 
-**Spec:** `docs/superpowers/specs/2026-08-08-hapus-item-bulan-ini-design.md`
+**Specs:**
+- Tasks 1–5: `docs/superpowers/specs/2026-08-08-hapus-item-bulan-ini-design.md`
+- Tasks 6–7: `docs/superpowers/specs/2026-08-08-hapus-bulan-design.md`
+- Task 8 verifies both.
 
 ## Global Constraints
 
@@ -19,6 +22,7 @@
 - **Commit messages** are a lowercase declarative sentence after the type, in the style of `feat: note suggestions filter as you type, ranked by how often used`. Every commit ends with the `Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>` trailer.
 - **Tests** run with `npm test` (Vitest, `vitest run`). Lint is `npm run lint`, build is `npm run build`.
 - **This branch is not shippable until Task 5 lands.** Task 4 exposes the delete button; Task 5 adds the only way back. Do not stop between them.
+- **Task 7 depends on Task 4.** It passes the `consequence` prop that Task 4 adds to `DeleteButton`. Without it the month dialog ends on "Data yang dihapus tidak bisa dikembalikan.", which is false — the month can be opened again.
 
 ---
 
@@ -31,12 +35,14 @@
 | `lib/types.ts:97` | *modify* — `excludedSourceIds` on `GenerateInput` |
 | `lib/generate.ts:28` | *modify* — one `skip` set the three definition loops share |
 | `lib/generate.test.ts` | *modify* — the exclusion rules |
-| `lib/queries/periods.ts` | *modify* — `generateMonth` reads the column; `deleteItem` writes it; new `clearExclusions` |
-| `app/(app)/current/actions.ts` | *modify* — `restoreExcludedAction` |
-| `components/delete-button.tsx` | *modify* — optional `consequence` prop |
+| `lib/period-summary.ts` | *new* — the sentence describing what a month holds |
+| `lib/period-summary.test.ts` | *new* — its rules |
+| `lib/queries/periods.ts` | *modify* — `generateMonth` reads the column; `deleteItem` writes it; new `clearExclusions`; new `deletePeriod` |
+| `app/(app)/current/actions.ts` | *modify* — `restoreExcludedAction`, `deleteMonthAction` |
+| `components/delete-button.tsx` | *modify* — optional `consequence` and `triggerLabel` props |
 | `components/current/item-row.tsx` | *modify* — show the button on generated rows, with month-scoped wording |
 | `components/current/excluded-note.tsx` | *new* — the muted line and its restore button |
-| `app/(app)/current/page.tsx` | *modify* — render the note |
+| `app/(app)/current/page.tsx` | *modify* — render the note and the month-delete trigger |
 | `docs/PROGRESS.md` | *modify* — record the feature and what was verified |
 
 ---
@@ -682,9 +688,294 @@ EOF
 
 ---
 
-## Task 6: Verify in the browser and record it
+## Task 6: The sentence describing what a month holds
 
-Every rule this feature depends on lives in the database round trip, which no test in this repo covers. `docs/PROGRESS.md` is candid that write paths have historically shipped unclicked; this one should not.
+Spec: `docs/superpowers/specs/2026-08-08-hapus-bulan-design.md`. The confirmation for deleting a month names what will be lost. Components in this project do not compute, so the sentence is a pure function — which also makes every branch of it testable.
+
+**Files:**
+- Create: `lib/period-summary.ts`
+- Create: `lib/period-summary.test.ts`
+
+**Interfaces:**
+- Consumes: nothing.
+- Produces: `PeriodContents` (`{ itemCount: number; paidCount: number; balanceCount: number; hasActualSalary: boolean; hasNote: boolean }`) and `describePeriodContents(contents: PeriodContents): string`. Task 7 calls it from `page.tsx`.
+
+- [ ] **Step 1: Write the failing tests**
+
+Create `lib/period-summary.test.ts`:
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { describePeriodContents } from './period-summary'
+import type { PeriodContents } from './period-summary'
+
+const nothing: PeriodContents = {
+  itemCount: 0,
+  paidCount: 0,
+  balanceCount: 0,
+  hasActualSalary: false,
+  hasNote: false,
+}
+
+describe('describePeriodContents', () => {
+  it('names every part of a full month, separated by a middle dot', () => {
+    expect(
+      describePeriodContents({
+        itemCount: 12,
+        paidCount: 3,
+        balanceCount: 4,
+        hasActualSalary: true,
+        hasNote: true,
+      })
+    ).toBe('12 item, 3 lunas · gaji riil terisi · saldo 4 rekening · ada catatan')
+  })
+
+  it('leaves out the lunas clause when nothing is paid', () => {
+    expect(describePeriodContents({ ...nothing, itemCount: 12 })).toBe('12 item')
+  })
+
+  it('names only the parts that are there', () => {
+    expect(describePeriodContents({ ...nothing, hasActualSalary: true })).toBe(
+      'gaji riil terisi'
+    )
+  })
+
+  it('omits a zero balance count', () => {
+    expect(
+      describePeriodContents({ ...nothing, itemCount: 5, balanceCount: 0 })
+    ).toBe('5 item')
+  })
+
+  it('says the month is empty when there is nothing at all', () => {
+    expect(describePeriodContents(nothing)).toBe('bulan ini masih kosong')
+  })
+})
+```
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+Run: `npm test -- period-summary`
+Expected: FAIL — the file `./period-summary` does not exist, so the suite cannot be collected.
+
+- [ ] **Step 3: Write the implementation**
+
+Create `lib/period-summary.ts`:
+
+```ts
+export interface PeriodContents {
+  itemCount: number
+  paidCount: number
+  balanceCount: number
+  hasActualSalary: boolean
+  hasNote: boolean
+}
+
+/**
+ * What a month is holding, in one line, for the dialog that offers to delete
+ * it. Empty parts are not written: a month with no note says nothing about
+ * notes, so the sentence never pads itself with things that are not there.
+ */
+export function describePeriodContents(contents: PeriodContents): string {
+  const { itemCount, paidCount, balanceCount, hasActualSalary, hasNote } =
+    contents
+  const parts: string[] = []
+
+  if (itemCount > 0) {
+    parts.push(
+      paidCount > 0 ? `${itemCount} item, ${paidCount} lunas` : `${itemCount} item`
+    )
+  }
+  if (hasActualSalary) parts.push('gaji riil terisi')
+  if (balanceCount > 0) parts.push(`saldo ${balanceCount} rekening`)
+  if (hasNote) parts.push('ada catatan')
+
+  return parts.length === 0 ? 'bulan ini masih kosong' : parts.join(' · ')
+}
+```
+
+- [ ] **Step 4: Run the tests to verify they pass**
+
+Run: `npm test -- period-summary`
+Expected: PASS, all five.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add lib/period-summary.ts lib/period-summary.test.ts
+git commit -m "$(cat <<'EOF'
+feat: say what a month is holding before offering to drop it
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+EOF
+)"
+```
+
+---
+
+## Task 7: Deleting the month
+
+Spec: `docs/superpowers/specs/2026-08-08-hapus-bulan-design.md`.
+
+**Files:**
+- Modify: `lib/queries/periods.ts`
+- Modify: `app/(app)/current/actions.ts`
+- Modify: `components/delete-button.tsx`
+- Modify: `app/(app)/current/page.tsx`
+
+**Interfaces:**
+- Consumes: `describePeriodContents` (Task 6); the `consequence` prop on `DeleteButton` (Task 4).
+- Produces: `deletePeriod(periodId: string): Promise<void>`; `deleteMonthAction(periodId: string): Promise<ActionState>`; `DeleteButton` gains `triggerLabel?: string`.
+
+- [ ] **Step 1: Add the query**
+
+In `lib/queries/periods.ts`, after `clearExclusions`, add a new section. One statement is the entire operation — `monthly_items` and `monthly_balances` both declare `on delete cascade` on `period_id`:
+
+```ts
+// --- Undoing a month ---
+
+/**
+ * Removes the period itself. monthly_items and monthly_balances follow through
+ * the cascades declared in 0001_init.sql, and actual_salary, note and
+ * excluded_source_ids live on this row. Spending and budget history are keyed
+ * by date rather than period_id, so they are deliberately out of reach.
+ */
+export async function deletePeriod(periodId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('monthly_periods')
+    .delete()
+    .eq('id', periodId)
+  if (error) throw error
+  revalidateMonthViews()
+}
+```
+
+- [ ] **Step 2: Add the action**
+
+In `app/(app)/current/actions.ts`, add `deletePeriod` to the import list from `@/lib/queries/periods`, then add the action after `restoreExcludedAction`:
+
+```ts
+export async function deleteMonthAction(periodId: string): Promise<ActionState> {
+  try {
+    await deletePeriod(periodId)
+    return { ok: true }
+  } catch (e) {
+    return fail(e)
+  }
+}
+```
+
+- [ ] **Step 3: Let `DeleteButton` render as text**
+
+The month trigger is a sentence at the foot of a page, not an icon in a row. In `components/delete-button.tsx`, add the prop to the type, after `consequence`:
+
+```ts
+  /**
+   * Renders the trigger as a muted text button carrying this label, instead of
+   * the ghost trash icon. For a trigger that stands alone rather than sitting
+   * at the end of a row, where an icon would have nothing to be read against.
+   */
+  triggerLabel?: string
+```
+
+Add `triggerLabel` to the destructured parameters, then replace the trigger:
+
+```tsx
+      <AlertDialogTrigger asChild>
+        {triggerLabel ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground h-auto p-0 text-xs font-normal underline underline-offset-2"
+          >
+            {triggerLabel}
+          </Button>
+        ) : (
+          <Button variant="ghost" size="icon" aria-label={`Hapus ${named}`}>
+            <Trash2 className="size-4" />
+          </Button>
+        )}
+      </AlertDialogTrigger>
+```
+
+The text trigger needs no `aria-label` — its own text is the accessible name.
+
+- [ ] **Step 4: Render it on the page**
+
+In `app/(app)/current/page.tsx`, add two imports:
+
+```tsx
+import { DeleteButton } from '@/components/delete-button'
+import { describePeriodContents } from '@/lib/period-summary'
+```
+
+and add `deleteMonthAction` to the existing import from `@/app/(app)/current/actions` — or add that import line if the page does not have one yet.
+
+Below the `const total = ...` line, compute the contents. Zero counts as empty for both the salary and the balances: a Rp 0 balance was never really entered, and counting it would pad the warning.
+
+```tsx
+  const monthLabel = formatMonthLabel(month)
+  const contents = describePeriodContents({
+    itemCount: items.length,
+    paidCount: items.filter((i) => i.is_paid).length,
+    balanceCount: balances.filter((b) => b.balance !== 0).length,
+    hasActualSalary: period.actual_salary !== null && period.actual_salary !== 0,
+    hasNote: (period.note ?? '').trim() !== '',
+  })
+```
+
+Then render the trigger at the very foot, directly after the `ExcludedNote` block added in Task 5:
+
+```tsx
+      {period.excluded_source_ids.length > 0 && (
+        <ExcludedNote
+          periodId={period.id}
+          month={month}
+          count={period.excluded_source_ids.length}
+        />
+      )}
+
+      {/* Foot of the page on purpose: Tambah item and Sinkron definisi are
+          pressed often, and this is not something to have next to them. */}
+      <div className="px-1">
+        <DeleteButton
+          id={period.id}
+          label={monthLabel}
+          triggerLabel={`Hapus ${monthLabel}`}
+          description={contents}
+          consequence="Semuanya hilang. Definisi di Pengaturan tidak disentuh, dan bulan ini bisa dibuka lagi kapan saja."
+          action={deleteMonthAction}
+        />
+      </div>
+```
+
+This whole block sits inside the branch that renders when `period` exists, so a month that was never opened shows the "belum dibuka" card and nothing else.
+
+- [ ] **Step 5: Verify**
+
+Run: `npm test`
+Expected: PASS.
+
+Run: `npm run lint && npm run build`
+Expected: no lint issues, build succeeds.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add lib/queries/periods.ts "app/(app)/current/actions.ts" components/delete-button.tsx "app/(app)/current/page.tsx"
+git commit -m "$(cat <<'EOF'
+feat: a month opened by mistake can be taken back
+
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+EOF
+)"
+```
+
+---
+
+## Task 8: Verify in the browser and record it
+
+Every rule these two features depend on lives in the database round trip, which no test in this repo covers. `docs/PROGRESS.md` is candid that write paths have historically shipped unclicked; these should not.
 
 **Files:**
 - Modify: `docs/PROGRESS.md`
@@ -701,7 +992,7 @@ npm test && npm run lint && npm run build
 
 Expected: all three clean. Record the test count.
 
-- [ ] **Step 2: Walk the feature in a running app**
+- [ ] **Step 2: Walk the row feature in a running app**
 
 Run `npm run dev`, log in, open `/current` on a month that has generated rows, and confirm each of these in order:
 
@@ -717,16 +1008,32 @@ Run `npm run dev`, log in, open `/current` on a month that has generated rows, a
 
 If any step disagrees, stop and fix it before writing anything down.
 
-- [ ] **Step 3: Record it**
+- [ ] **Step 3: Walk the month deletion — on a throwaway month**
 
-Add a dated section to `docs/PROGRESS.md` in the style of the existing ones: what the feature is, that the exclusion column is what makes a deletion survive sync, which of the nine checks above were actually performed in a browser and which were not, and the `npm test` count at this commit.
+**Do this on a month you are willing to lose.** Deleting is real and reaches live data. Use the MonthPicker to move to a month far from the one in use — a future month works well — and press **Mulai bulan baru** to open it. Then:
 
-- [ ] **Step 4: Commit**
+1. *"Hapus <bulan>"* appears at the foot of the page, below the groups, as muted text rather than an icon.
+2. Its dialog names the contents. On a freshly opened month that is the item count with no `lunas` clause; fill in the actual salary and a note, reload, and those parts appear too.
+3. The dialog's closing line is *"Semuanya hilang. Definisi di Pengaturan tidak disentuh…"* — **not** *"Data yang dihapus tidak bisa dikembalikan."*
+4. Confirming returns the page to the *"<bulan> belum dibuka"* card with its Mulai bulan baru button. The MonthPicker still shows the same month.
+5. Pressing **Mulai bulan baru** opens it again from the definitions.
+6. Open Pengaturan: every definition is untouched.
+7. Open Belanja: recorded spending is untouched — it is keyed by date, not by the period.
+8. Open Dashboard: the deleted month is gone from the trend, and no other month moved.
+9. Move to a month that was never opened: the "belum dibuka" card shows, and there is no *"Hapus …"* trigger to press.
+
+If any step disagrees, stop and fix it before writing anything down.
+
+- [ ] **Step 4: Record it**
+
+Add a dated section to `docs/PROGRESS.md` in the style of the existing ones: both features, that the exclusion column is what makes a row deletion survive sync and that the cascades in `0001_init.sql` are what make the month deletion one statement, which of the eighteen checks above were actually performed in a browser and which were not, and the `npm test` count at this commit.
+
+- [ ] **Step 5: Commit**
 
 ```bash
 git add docs/PROGRESS.md
 git commit -m "$(cat <<'EOF'
-docs: what the exclusion column does, and what was clicked to prove it
+docs: the two undo paths, and what was clicked to prove them
 
 Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 EOF
@@ -736,6 +1043,8 @@ EOF
 ---
 
 ## Spec coverage
+
+### `2026-08-08-hapus-item-bulan-ini-design.md`
 
 | Spec section | Task |
 |---|---|
@@ -751,3 +1060,20 @@ EOF
 | Edge: concurrent deletes | no code — accepted in the spec |
 | Edge: exclusions with no items | 5, step 2 — the note sits outside the empty-state branch |
 | Out of scope: card bills, per-item restore, amount preservation | not implemented, by design |
+
+### `2026-08-08-hapus-bulan-design.md`
+
+| Spec section | Task |
+|---|---|
+| What goes, and what stays — one delete, the cascades carry the rest | 7, step 1 |
+| The affordance — muted text trigger at the foot, the dialog's three lines | 7, steps 3 and 4 |
+| Reusing `DeleteButton` — the `triggerLabel` prop | 7, step 3 |
+| Pure function — `describePeriodContents` and its rules | 6 |
+| Zero counts as empty for salary and balances | 7, step 4 — the `!== 0` filters |
+| Testing — the five sentence cases | 6, step 1 |
+| Edge: a period with no items | 6 — `bulan ini masih kosong`; 8, step 3 check 2 |
+| Edge: a month never opened has no trigger | 7, step 4 — inside the `period` branch; 8, step 3 check 9 |
+| Edge: deleting a past month is allowed | no code — no guard is written |
+| Edge: stale page, period already gone | no code — a delete matching zero rows is not an error |
+| Knock-on: next month loses its inheritance source | no code — documented in the spec |
+| Out of scope: resetting items in place, bulk operations, spending | not implemented, by design |
