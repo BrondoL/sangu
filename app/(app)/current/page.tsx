@@ -5,6 +5,7 @@ import { Eyebrow, PageHeader } from '@/components/kwitansi'
 import { TopPanel } from '@/components/current/top-panel'
 import { ItemGroup } from '@/components/current/item-group'
 import { AddItemDialog } from '@/components/current/add-item-dialog'
+import { ExcludedNote } from '@/components/current/excluded-note'
 import { GenerateButton } from '@/components/current/generate-button'
 import { listAccounts } from '@/lib/queries/accounts'
 import { getPeriod, getItems, getBalances } from '@/lib/queries/periods'
@@ -111,6 +112,14 @@ export default async function CurrentPage({
             />
           ))}
         </div>
+      )}
+
+      {period.excluded_source_ids.length > 0 && (
+        <ExcludedNote
+          periodId={period.id}
+          month={month}
+          count={period.excluded_source_ids.length}
+        />
       )}
     </div>
   )
