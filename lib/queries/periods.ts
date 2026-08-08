@@ -84,7 +84,46 @@ export async function addManualItem(input: {
 
 export async function deleteItem(id: string) {
   const supabase = await createClient()
+
+  // Read before deleting. A generated row's source_id has to be remembered on
+  // the period, or the next sync reads its absence as an omission and puts the
+  // row straight back.
+  const { data: item, error: readErr } = await supabase
+    .from('monthly_items')
+    .select('period_id, source_id')
+    .eq('id', id)
+    .single()
+  if (readErr) throw readErr
+
   const { error } = await supabase.from('monthly_items').delete().eq('id', id)
+  if (error) throw error
+
+  if (item.source_id) {
+    const { data: period, error: periodErr } = await supabase
+      .from('monthly_periods')
+      .select('excluded_source_ids')
+      .eq('id', item.period_id)
+      .single()
+    if (periodErr) throw periodErr
+
+    // Deduped: delete, restore, delete again must not stack copies of one id.
+    const next = [...new Set([...period.excluded_source_ids, item.source_id])]
+    const { error: writeErr } = await supabase
+      .from('monthly_periods')
+      .update({ excluded_source_ids: next })
+      .eq('id', item.period_id)
+    if (writeErr) throw writeErr
+  }
+
+  revalidateMonthViews()
+}
+
+export async function clearExclusions(periodId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('monthly_periods')
+    .update({ excluded_source_ids: [] })
+    .eq('id', periodId)
   if (error) throw error
   revalidateMonthViews()
 }
