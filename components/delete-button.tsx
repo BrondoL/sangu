@@ -21,6 +21,7 @@ export function DeleteButton({
   id,
   label,
   description,
+  consequence = 'Data yang dihapus tidak bisa dikembalikan.',
   action,
 }: {
   id: string
@@ -32,6 +33,12 @@ export function DeleteButton({
    * callers name a unique record and pass nothing here.
    */
   description?: string
+  /**
+   * What confirming actually costs. Deletion is normally final, which is the
+   * default. A generated row on a month is the exception: it comes back next
+   * month on its own, and can be restored into this one.
+   */
+  consequence?: string
   action: (id: string) => Promise<ActionState>
 }) {
   const [pending, startTransition] = useTransition()
@@ -51,7 +58,7 @@ export function DeleteButton({
             {description && (
               <span className="text-foreground mb-1 block">{description}</span>
             )}
-            Data yang dihapus tidak bisa dikembalikan.
+            {consequence}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
