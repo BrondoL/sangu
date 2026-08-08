@@ -128,6 +128,24 @@ export async function clearExclusions(periodId: string) {
   revalidateMonthViews()
 }
 
+// --- Undoing a month ---
+
+/**
+ * Removes the period itself. monthly_items and monthly_balances follow through
+ * the cascades declared in 0001_init.sql, and actual_salary, note and
+ * excluded_source_ids live on this row. Spending and budget history are keyed
+ * by date rather than period_id, so they are deliberately out of reach.
+ */
+export async function deletePeriod(periodId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('monthly_periods')
+    .delete()
+    .eq('id', periodId)
+  if (error) throw error
+  revalidateMonthViews()
+}
+
 // --- Period-level mutations ---
 
 export async function setActualSalary(periodId: string, amount: number | null) {

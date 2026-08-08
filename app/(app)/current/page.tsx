@@ -7,10 +7,13 @@ import { ItemGroup } from '@/components/current/item-group'
 import { AddItemDialog } from '@/components/current/add-item-dialog'
 import { ExcludedNote } from '@/components/current/excluded-note'
 import { GenerateButton } from '@/components/current/generate-button'
+import { DeleteButton } from '@/components/delete-button'
+import { deleteMonthAction } from '@/app/(app)/current/actions'
 import { listAccounts } from '@/lib/queries/accounts'
 import { getPeriod, getItems, getBalances } from '@/lib/queries/periods'
 import { currentMonthParam, formatMonthLabel, toMonthParam } from '@/lib/month'
 import { formatRupiah } from '@/lib/format'
+import { describePeriodContents } from '@/lib/period-summary'
 import type { Category } from '@/lib/types'
 
 const GROUPS: { category: Category; title: string }[] = [
@@ -67,6 +70,17 @@ export default async function CurrentPage({
   ])
   const total = items.reduce((sum, i) => sum + i.amount, 0)
 
+  // Zero counts as empty for both the salary and the balances: a Rp 0 figure
+  // was never really entered, and counting it would pad the warning.
+  const monthLabel = formatMonthLabel(month)
+  const contents = describePeriodContents({
+    itemCount: items.length,
+    paidCount: items.filter((i) => i.is_paid).length,
+    balanceCount: balances.filter((b) => b.balance !== 0).length,
+    hasActualSalary: period.actual_salary !== null && period.actual_salary !== 0,
+    hasNote: (period.note ?? '').trim() !== '',
+  })
+
   return (
     <div className="space-y-4">
       {header}
@@ -121,6 +135,19 @@ export default async function CurrentPage({
           count={period.excluded_source_ids.length}
         />
       )}
+
+      {/* Foot of the page on purpose: Tambah item and Sinkron definisi are
+          pressed often, and this is not something to have next to them. */}
+      <div className="px-1">
+        <DeleteButton
+          id={period.id}
+          label={monthLabel}
+          triggerLabel={`Hapus ${monthLabel}`}
+          description={contents}
+          consequence="Semuanya hilang. Definisi di Pengaturan tidak disentuh, dan bulan ini bisa dibuka lagi kapan saja."
+          action={deleteMonthAction}
+        />
+      </div>
     </div>
   )
 }

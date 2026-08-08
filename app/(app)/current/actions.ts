@@ -6,6 +6,7 @@ import {
   addManualItem,
   deleteItem,
   clearExclusions,
+  deletePeriod,
   setActualSalary,
   setBalance,
   setNote,
@@ -69,6 +70,15 @@ export async function restoreExcludedAction(
   try {
     await clearExclusions(periodId)
     await generateMonth(month)
+    return { ok: true }
+  } catch (e) {
+    return fail(e)
+  }
+}
+
+export async function deleteMonthAction(periodId: string): Promise<ActionState> {
+  try {
+    await deletePeriod(periodId)
     return { ok: true }
   } catch (e) {
     return fail(e)

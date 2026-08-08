@@ -22,6 +22,7 @@ export function DeleteButton({
   label,
   description,
   consequence = 'Data yang dihapus tidak bisa dikembalikan.',
+  triggerLabel,
   action,
 }: {
   id: string
@@ -39,6 +40,12 @@ export function DeleteButton({
    * month on its own, and can be restored into this one.
    */
   consequence?: string
+  /**
+   * Renders the trigger as a muted text button carrying this label, instead of
+   * the ghost trash icon. For a trigger that stands alone rather than sitting
+   * at the end of a row, where an icon would have nothing to be read against.
+   */
+  triggerLabel?: string
   action: (id: string) => Promise<ActionState>
 }) {
   const [pending, startTransition] = useTransition()
@@ -47,9 +54,20 @@ export function DeleteButton({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={`Hapus ${named}`}>
-          <Trash2 className="size-4" />
-        </Button>
+        {triggerLabel ? (
+          // The text is its own accessible name, so no aria-label here.
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground h-auto p-0 text-xs font-normal underline underline-offset-2"
+          >
+            {triggerLabel}
+          </Button>
+        ) : (
+          <Button variant="ghost" size="icon" aria-label={`Hapus ${named}`}>
+            <Trash2 className="size-4" />
+          </Button>
+        )}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
