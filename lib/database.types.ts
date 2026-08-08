@@ -213,6 +213,7 @@ export type Database = {
       monthly_periods: {
         Row: {
           actual_salary: number | null
+          excluded_source_ids: string[]
           id: string
           month: string
           note: string | null
@@ -220,6 +221,7 @@ export type Database = {
         }
         Insert: {
           actual_salary?: number | null
+          excluded_source_ids?: string[]
           id?: string
           month: string
           note?: string | null
@@ -227,6 +229,7 @@ export type Database = {
         }
         Update: {
           actual_salary?: number | null
+          excluded_source_ids?: string[]
           id?: string
           month?: string
           note?: string | null
